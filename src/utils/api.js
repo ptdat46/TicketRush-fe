@@ -44,10 +44,9 @@ apiClient.interceptors.response.use(
             Cookies.remove('authToken');
             const path = window.location.pathname || '/';
             // Choose login target by section; default to user login
-            let target = '/login';
-            if (path.startsWith('/admin')) target = '/admin/login';
-            else if (path.startsWith('/manager')) target = '/manager/login';
-            else if (path.startsWith('/editor')) target = '/editor/login';
+            let target = '/sign-in';
+            if (path.startsWith('/admin')) target = '/admin/sign-in';
+            else if (path.startsWith('/organizer')) target = '/organizer/sign-in';
             // Avoid reload loop if already at target or at home
             if (path !== target && path !== '/') {
                 window.location.replace(target);
@@ -87,4 +86,32 @@ export const setAuthRole = (role) => {
         expires: 7,
         path: '/', 
     });
+}
+
+export const setAuthUser = (user) => {
+    Cookies.set('authUser', JSON.stringify(user), {
+        expires: 7,
+        path: '/',
+    });
+}
+
+export const getAuthToken = () => Cookies.get('authToken') || null;
+
+export const getAuthRole = () => Cookies.get('authRole') || null;
+
+export const getAuthUser = () => {
+    const user = Cookies.get('authUser');
+    if (!user) return null;
+
+    try {
+        return JSON.parse(user);
+    } catch {
+        return null;
+    }
+}
+
+export const clearAuth = () => {
+    Cookies.remove('authToken', { path: '/' });
+    Cookies.remove('authRole', { path: '/' });
+    Cookies.remove('authUser', { path: '/' });
 }
