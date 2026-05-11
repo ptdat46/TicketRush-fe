@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import EventListPage from './pages/EventListPage'
 import HomePage from './pages/HomePage'
 import MyProfilePage from './pages/MyProfilePage'
 import MyTicketPage from './pages/MyTicketPage'
@@ -16,6 +17,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/events" element={<EventListPage />} />
           <Route path="/sign-in" element={<SignInPage expectedRole="customer" />} />
           <Route path="/register" element={<RegisterPage role="customer" />} />
           <Route path="/admin/sign-in" element={<SignInPage expectedRole="admin" />} />

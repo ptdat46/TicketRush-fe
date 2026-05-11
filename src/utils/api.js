@@ -37,7 +37,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => {
         const responseData = response.data?.data !== undefined ? response.data.data : response.data;
-        return { success: true, data: responseData, status: response.status };
+        return { success: true, data: responseData, meta: response.data?.meta || null, status: response.status };
     },
     (error) => {
         if (error.response?.status === 401) {

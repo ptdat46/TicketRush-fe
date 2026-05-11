@@ -1,8 +1,15 @@
+import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import { useAuth } from '../contexts/AuthContext'
 
 function MyProfilePage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/sign-in')
+  }
 
   return (
     <div className="min-h-screen bg-[#0e1510] text-[#dde5dc]">
@@ -16,6 +23,14 @@ function MyProfilePage() {
           <p className="mt-1 text-lg font-bold text-white">{user?.email || 'Chưa có thông tin'}</p>
           <p className="mt-4 text-sm text-[#bccabd]">Vai trò</p>
           <p className="mt-1 text-lg font-bold text-white">{user?.role || 'Chưa có thông tin'}</p>
+
+          <button
+            className="mt-6 w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-400 transition-colors hover:bg-red-500/20"
+            onClick={handleLogout}
+            type="button"
+          >
+            Đăng xuất
+          </button>
         </div>
       </main>
     </div>

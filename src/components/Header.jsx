@@ -6,6 +6,16 @@ function Header() {
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuth()
 
+  const isOrganizer = role === 'organizer'
+  const isCustomer = role === 'customer'
+  const showCreateEvent = !isAuthenticated || isOrganizer
+  const showMyTickets = !isAuthenticated || isCustomer || !role
+
+  const handleCreateEventClick = (event) => {
+    event.preventDefault()
+    navigate(isOrganizer ? '/organizer/create-event' : '/organizer/sign-in')
+  }
+
   const handleMyTicketsClick = (event) => {
     event.preventDefault()
     navigate(isAuthenticated ? '/my-ticket' : '/sign-in')
@@ -32,15 +42,21 @@ function Header() {
             Khám phá
           </Link>
 
-          {isAuthenticated && role === 'organizer' && (
-            <Link className="rounded-full px-3 py-1 text-sm font-semibold text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white" to="/organizer/create-event">
+          {showCreateEvent && (
+            <a
+              className="rounded-full px-3 py-1 text-sm font-semibold text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white"
+              href="/organizer/create-event"
+              onClick={handleCreateEventClick}
+            >
               Tạo sự kiện
-            </Link>
+            </a>
           )}
 
-          <a className="rounded-full px-3 py-1 text-sm font-semibold text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white" href="/my-ticket" onClick={handleMyTicketsClick}>
-            Vé của tôi
-          </a>
+          {showMyTickets && (
+            <a className="rounded-full px-3 py-1 text-sm font-semibold text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white" href="/my-ticket" onClick={handleMyTicketsClick}>
+              Vé của tôi
+            </a>
+          )}
 
           <Link className="ml-2 rounded-full bg-[#0e1510] px-6 py-2 font-bold text-[#dde5dc] shadow-lg shadow-black/20 transition-colors hover:bg-[#2f3631]" to={isAuthenticated ? '/my-profile' : '/sign-in'}>
             {isAuthenticated ? 'Tài khoản' : 'Đăng nhập'}
