@@ -30,11 +30,13 @@ function Step1BasicInfo({ data, onChange }) {
       {/* Progress */}
       <div>
         <div className="mb-2 flex items-end justify-between">
-          <h1 className="text-2xl font-bold text-[#dde5dc]">Thong tin su kien</h1>
-          <span className="text-xs font-semibold text-[#59de92]">Buoc 1/3</span>
+          <h1 className="text-2xl font-bold text-[#dde5dc]">Thông tin sự kiện</h1>
+          <span className="text-xs font-semibold text-[#59de92]">Bước 1/3</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#252c26]">
-          <div className="h-full w-1/3 rounded-full bg-linear-to-r from-[#59de92] to-[#20b36c]" />
+        <div className="flex items-center gap-2">
+          <div className="h-2 flex-1 rounded-full bg-[#59de92] shadow-[0_0_10px_rgba(89,222,146,0.5)]" />
+          <div className="h-2 flex-1 rounded-full bg-[#252c26]" />
+          <div className="h-2 flex-1 rounded-full bg-[#252c26]" />
         </div>
       </div>
 
@@ -43,12 +45,12 @@ function Step1BasicInfo({ data, onChange }) {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="md:col-span-2 flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
-              Ten su kien <span className="text-[#ffb4ab]">*</span>
+              Tên sự kiện <span className="text-[#ffb4ab]">*</span>
             </label>
             <input
               className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-4 py-3 text-[#dde5dc] outline-none transition-colors placeholder:text-[#bccabd]/50 focus:border-[#59de92] focus:ring-1 focus:ring-[#59de92]"
               onChange={(e) => onChange('name', e.target.value)}
-              placeholder="Nhap ten su kien cuc chay cua ban..."
+              placeholder="Nhập tên sự kiện cực cháy của bạn..."
               type="text"
               value={data.name || ''}
             />
@@ -56,7 +58,7 @@ function Step1BasicInfo({ data, onChange }) {
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
-              Danh muc <span className="text-[#ffb4ab]">*</span>
+              Danh mục <span className="text-[#ffb4ab]">*</span>
             </label>
             <div className="relative">
               <select
@@ -64,7 +66,7 @@ function Step1BasicInfo({ data, onChange }) {
                 onChange={(e) => onChange('category', e.target.value)}
                 value={data.category || ''}
               >
-                <option disabled value="">Chon the loai...</option>
+                <option disabled value="">Chọn thể loại...</option>
                 {CATEGORIES.map((c) => (
                   <option key={c.key} value={c.key}>{c.name}</option>
                 ))}
@@ -79,11 +81,11 @@ function Step1BasicInfo({ data, onChange }) {
 
       {/* Media Card */}
       <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-        <h3 className="mb-4 text-lg font-bold text-[#dde5dc]">Hinh anh truyen thong</h3>
+        <h3 className="mb-4 text-lg font-bold text-[#dde5dc]">Hình ảnh truyền thông</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="md:col-span-2 flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
-              Banner su kien (Ty le 16:9) <span className="text-[#ffb4ab]">*</span>
+              Banner sự kiện (Tỷ lệ 16:9) <span className="text-[#ffb4ab]">*</span>
             </label>
             <div
               className="relative flex h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#3d4a40] bg-[#161d18] transition-all hover:border-[#59de92] hover:bg-[#2f3631] sm:h-64"
@@ -104,8 +106,8 @@ function Step1BasicInfo({ data, onChange }) {
                 <div className="flex flex-col items-center gap-2 text-[#bccabd]">
                   <FaCloudUploadAlt className="text-4xl" />
                   <span className="text-center text-xs font-semibold">
-                    Keo tha hoac click de tai len Banner<br />
-                    <span className="text-[10px] font-normal opacity-70">De xuat: 1920x1080px (Max 5MB)</span>
+                    Kéo thả hoặc click để tải lên Banner<br />
+                    <span className="text-[10px] font-normal opacity-70">Đề xuất: 1920x1080px (Max 5MB)</span>
                   </span>
                 </div>
               )}
@@ -114,7 +116,7 @@ function Step1BasicInfo({ data, onChange }) {
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
-              Thumbnail (Ty le 1:1) <span className="text-[#ffb4ab]">*</span>
+              Thumbnail (Tỷ lệ 1:1) <span className="text-[#ffb4ab]">*</span>
             </label>
             <div
               className="relative flex h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#3d4a40] bg-[#161d18] transition-all hover:border-[#59de92] hover:bg-[#2f3631] sm:h-64"
@@ -135,8 +137,8 @@ function Step1BasicInfo({ data, onChange }) {
                 <div className="flex flex-col items-center gap-2 text-[#bccabd]">
                   <FaImage className="text-3xl" />
                   <span className="text-center text-xs font-semibold">
-                    Tai len Thumbnail<br />
-                    <span className="text-[10px] font-normal opacity-70">De xuat: 800x800px</span>
+                    Tải lên Thumbnail<br />
+                    <span className="text-[10px] font-normal opacity-70">Đề xuất: 800x800px</span>
                   </span>
                 </div>
               )}
@@ -149,7 +151,7 @@ function Step1BasicInfo({ data, onChange }) {
       <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
         <div className="flex flex-col gap-2">
           <label className="flex justify-between text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
-            <span>Mo ta su kien</span>
+            <span>Mô tả sự kiện</span>
             <span className="font-normal opacity-70">{descLength} / 2000</span>
           </label>
           <textarea
@@ -159,10 +161,73 @@ function Step1BasicInfo({ data, onChange }) {
               setDescLength(e.target.value.length)
               onChange('description', e.target.value)
             }}
-            placeholder="Ke cho khan gia nghe su kien nay co gi hap dan..."
+            placeholder="Kể cho khán giả nghe sự kiện này có gì hấp dẫn..."
             rows={6}
             value={data.description || ''}
           />
+        </div>
+      </div>
+
+      {/* Venue & Schedule */}
+      <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+        <h3 className="mb-4 text-lg font-bold text-[#dde5dc]">Địa điểm & Lịch trình</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
+              Tên địa điểm <span className="text-[#ffb4ab]">*</span>
+            </label>
+            <input
+              className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-4 py-3 text-[#dde5dc] outline-none transition-colors placeholder:text-[#bccabd]/50 focus:border-[#59de92] focus:ring-1 focus:ring-[#59de92]"
+              onChange={(e) => onChange('venue', e.target.value)}
+              placeholder="Nhập tên địa điểm tổ chức..."
+              type="text"
+              value={data.venue || ''}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
+                Bắt đầu sự kiện <span className="text-[#ffb4ab]">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-3 py-3 text-[#dde5dc] outline-none transition-colors focus:border-[#59de92] scheme-dark"
+                onChange={(e) => onChange('starts_at', e.target.value)}
+                type="datetime-local"
+                value={data.starts_at || ''}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#bccabd]">
+                Kết thúc sự kiện <span className="text-[#ffb4ab]">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-3 py-3 text-[#dde5dc] outline-none transition-colors focus:border-[#59de92] scheme-dark"
+                onChange={(e) => onChange('ends_at', e.target.value)}
+                type="datetime-local"
+                value={data.ends_at || ''}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#bccabd]">Mở bán vé</label>
+              <input
+                className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-3 py-3 text-[#dde5dc] outline-none transition-colors focus:border-[#59de92] scheme-dark"
+                onChange={(e) => onChange('ticket_sale_starts_at', e.target.value)}
+                type="datetime-local"
+                value={data.ticket_sale_starts_at || ''}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#bccabd]">Đóng bán vé</label>
+              <input
+                className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-3 py-3 text-[#dde5dc] outline-none transition-colors focus:border-[#59de92] scheme-dark"
+                onChange={(e) => onChange('ticket_sale_ends_at', e.target.value)}
+                type="datetime-local"
+                value={data.ticket_sale_ends_at || ''}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

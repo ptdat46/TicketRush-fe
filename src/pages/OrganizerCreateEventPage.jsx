@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from '../components/Header'
 import EventWizardFooter from '../components/organizer/EventWizardFooter'
 import EventWizardSidebar from '../components/organizer/EventWizardSidebar'
 import Step1BasicInfo from '../components/organizer/Step1BasicInfo'
@@ -69,7 +70,7 @@ function OrganizerCreateEventPage() {
   const canProceed = () => {
     switch (currentStepIndex) {
       case 0:
-        return Boolean(data.name && data.category)
+        return Boolean(data.name && data.category && data.venue && data.starts_at && data.ends_at)
       case 1:
         return Boolean(data.venue && data.starts_at && data.ends_at)
       case 2:
@@ -106,7 +107,7 @@ function OrganizerCreateEventPage() {
       const response = await api.post('/organizer/events', payload)
 
       if (!response.success) {
-        setError(response.error || 'Khong the tao su kien.')
+        setError(response.error || 'Không thể tạo sự kiện.')
         setIsSubmitting(false)
         return
       }
@@ -121,13 +122,14 @@ function OrganizerCreateEventPage() {
 
       navigate('/')
     } catch {
-      setError('Da xay ra loi. Vui long thu lai.')
+      setError('Đã xảy ra lỗi. Vui lòng thử lại.')
       setIsSubmitting(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-[#0e1510] text-[#dde5dc]">
+      <Header />
       <EventWizardSidebar activeStep={currentStep.label} onStepChange={handleSidebarChange} />
 
       <main className="pb-32 pt-16 md:pl-64">

@@ -1,14 +1,18 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FiMenu, FiSearch } from 'react-icons/fi'
 import { useAuth } from '../contexts/AuthContext'
 
 function Header() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, role } = useAuth()
 
   const isOrganizer = role === 'organizer'
   const isCustomer = role === 'customer'
-  const showCreateEvent = !isAuthenticated || isOrganizer
+  const isCreateEventPage = location.pathname === '/organizer/create-event'
+  const isOrganizerEventsPage = location.pathname.startsWith('/organizer/events')
+  const showCreateEvent = (!isAuthenticated || isOrganizer) && !isCreateEventPage
+  const showOrganizerEvents = isOrganizer && !isOrganizerEventsPage
   const showMyTickets = !isAuthenticated || isCustomer || !role
 
   const handleCreateEventClick = (event) => {
@@ -50,6 +54,15 @@ function Header() {
             >
               Tạo sự kiện
             </a>
+          )}
+
+          {showOrganizerEvents && (
+            <Link
+              className="rounded-full px-3 py-1 text-sm font-semibold text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white"
+              to="/organizer/events"
+            >
+              Sự kiện của tôi
+            </Link>
           )}
 
           {showMyTickets && (

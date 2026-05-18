@@ -15,7 +15,7 @@ function EventWizardFooter({ currentStep, totalSteps, onBack, onNext, canProceed
             onClick={onBack}
             type="button"
           >
-            Back
+            Quay lại
           </button>
         )}
 
@@ -26,7 +26,7 @@ function EventWizardFooter({ currentStep, totalSteps, onBack, onNext, canProceed
             onClick={onNext}
             type="button"
           >
-            Hoan tat & Dang su kien
+            Hoàn tất & Đăng sự kiện
           </button>
         ) : (
           <button
@@ -35,7 +35,7 @@ function EventWizardFooter({ currentStep, totalSteps, onBack, onNext, canProceed
             onClick={onNext}
             type="button"
           >
-            Next Step
+            Bước tiếp theo
           </button>
         )}
       </div>

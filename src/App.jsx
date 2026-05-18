@@ -7,6 +7,8 @@ import HomePage from './pages/HomePage'
 import MyProfilePage from './pages/MyProfilePage'
 import MyTicketPage from './pages/MyTicketPage'
 import OrganizerCreateEventPage from './pages/OrganizerCreateEventPage'
+import OrganizerEventDetailPage from './pages/OrganizerEventDetailPage'
+import OrganizerEventsPage from './pages/OrganizerEventsPage'
 import RegisterPage from './pages/RegisterPage'
 import SignInPage from './pages/SignInPage'
 import './App.css'
@@ -44,6 +46,22 @@ function App() {
             element={
               <ProtectedRoute roles={['organizer']}>
                 <OrganizerCreateEventPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organizer/events"
+            element={
+              <ProtectedRoute roles={['organizer']}>
+                <OrganizerEventsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organizer/events/:eventId"
+            element={
+              <ProtectedRoute roles={['organizer']}>
+                <OrganizerEventDetailPage />
               </ProtectedRoute>
             }
           />

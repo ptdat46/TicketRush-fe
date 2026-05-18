@@ -1,33 +1,270 @@
-# TicketRush API Documentation
+# TicketRush - Hệ thống đặt vé sự kiện trực tuyến
 
-> Source of truth for FE developers. Update this file whenever any API route, request payload, response shape, validation rule, auth rule, or business behavior changes.
+## 1. Tổng quan dự án
 
-## 1. API conventions
+TicketRush là nền tảng phân phối vé điện tử cho sự kiện, tập trung vào:
 
-### Base URL
+- **Trải nghiệm chọn ghế trực quan**: Người dùng xem sơ đồ ghế theo từng khu vực và chọn ghế trực tiếp trên map.
+- **Xử lý tranh chấp dữ liệu cao**: Đảm bảo một ghế không bị nhiều người mua cùng lúc trong các đợt mở bán cao điểm.
+- **Quản trị sự kiện linh hoạt**: Organizer có thể tạo sự kiện, thiết kế sơ đồ, quản lý vé và xem thống kê.
+- **Vé điện tử QR Code**: Sau khi thanh toán thành công, hệ thống phát hành vé QR cho khách hàng.
 
-```txt
-/api
-```
+Mô hình sản phẩm tham chiếu giống các nền tảng đặt vé sự kiện như Ticketbox: tìm kiếm sự kiện, xem thông tin, chọn vé/chỗ ngồi, giữ chỗ, thanh toán và nhận vé điện tử.
 
-### Headers
+## 2. Vai trò người dùng
 
-For public APIs:
+### Admin
 
-```txt
-Accept: application/json
-Content-Type: application/json
-```
+- Duyệt hoặc từ chối sự kiện do Organizer gửi lên.
+- Quản lý người dùng, sự kiện, danh mục và dữ liệu toàn hệ thống.
+- Theo dõi giao dịch, log hệ thống và các hành vi bất thường.
 
-For authenticated APIs:
+### Organizer
 
-```txt
-Authorization: Bearer <token>
-Accept: application/json
-Content-Type: application/json
-```
+- Đăng ký và quản lý sự kiện.
+- Thiết kế sơ đồ map theo mô hình Master Grid và Zones.
+- Quản lý vùng vé, giá vé, ghế ngồi và trạng thái mở bán.
+- Xem báo cáo doanh thu, lượng vé bán ra và thống kê khách hàng.
 
-### Standard success response
+### Customer
+
+- Tìm kiếm và xem chi tiết sự kiện.
+- Chọn ghế hoặc khu vực vé trên sơ đồ trực quan.
+- Giữ chỗ trong 10 phút.
+- Thanh toán giả lập và nhận vé QR Code.
+- Quản lý vé đã mua trong tài khoản cá nhân.
+
+## 3. Logic thiết kế sơ đồ và ghế ngồi
+
+Hệ thống áp dụng mô hình **Master Grid - Child Zones**.
+
+### Master Map
+
+Mỗi sự kiện có một bản đồ tổng thể với các thông tin:
+
+- **display_type**: Kiểu hiển thị của sơ đồ.
+  - `rectangular`: Sơ đồ chữ nhật.
+  - `arc`: Sơ đồ vòng cung.
+  - `stadium`: Sơ đồ sân vận động.
+- **master_width**: Chiều rộng tổng theo đơn vị ô lưới.
+- **master_length**: Chiều dài tổng theo đơn vị ô lưới.
+
+### Zones
+
+Zone là các vùng con nằm trong Master Map.
+
+- **event_id**: Sự kiện sở hữu zone.
+- **name**: Tên vùng, ví dụ VIP, Standard, A1, B2.
+- **price**: Giá vé áp dụng cho ghế trong zone.
+- **color**: Màu hiển thị trên sơ đồ.
+- **icon_url**: Icon đại diện nếu cần.
+- **pos_x, pos_y**: Tọa độ của zone trong Master Grid.
+- **width, length**: Kích thước zone theo số ô lưới.
+- **is_seating**:
+  - `true`: Khu vực có ghế, hệ thống tự sinh seats.
+  - `false`: Lối đi, hành lang, sân cỏ hoặc vùng không bán ghế.
+
+### Seats
+
+Ghế được tự động sinh dựa trên kích thước của từng zone có `is_seating = true`.
+
+- **zone_id**: Zone chứa ghế.
+- **row_index**: Vị trí hàng trong zone.
+- **col_index**: Vị trí cột trong zone.
+- **status**:
+  - `available`: Ghế còn trống.
+  - `locked`: Ghế đang được giữ tạm thời.
+  - `sold`: Ghế đã bán.
+- **locked_by**: Customer đang giữ ghế.
+- **locked_at**: Thời điểm bắt đầu giữ ghế.
+
+## 4. Luồng nghiệp vụ chính
+
+### Tạo và duyệt sự kiện
+
+1. Organizer tạo sự kiện và thiết kế sơ đồ.
+2. Sự kiện có trạng thái mặc định `pending`.
+3. Admin duyệt sự kiện sang `approved` hoặc từ chối sang `rejected`.
+4. Chỉ sự kiện `approved` mới hiển thị cho Customer.
+
+### Đặt vé
+
+1. Customer xem sơ đồ sự kiện.
+2. Customer chọn ghế còn `available`.
+3. Hệ thống lock ghế trong 10 phút.
+4. Customer xác nhận thanh toán giả lập.
+5. Hệ thống tạo order, ticket QR và chuyển ghế sang `sold`.
+6. Vé đã bán không hỗ trợ hoàn tiền.
+
+### Dọn ghế hết hạn lock
+
+- Cronjob chạy mỗi 1 phút.
+- Tìm các ghế `locked` quá 10 phút.
+- Chuyển ghế về `available`.
+- Xóa `locked_by` và `locked_at`.
+
+## 5. Kiến trúc Laravel đề xuất
+
+Dự án nên áp dụng mô hình phân tầng để dễ mở rộng và bảo trì.
+
+### Controller Layer
+
+- Chỉ nhận request, gọi service và trả response.
+- Không chứa business logic phức tạp.
+- Sử dụng Form Request để validate input.
+- Trả response thống nhất qua BaseController hoặc API Response helper.
+
+### Service Layer
+
+- Chứa business logic chính.
+- Xử lý luồng tạo sự kiện, sinh ghế, giữ ghế, thanh toán và phát hành vé.
+- Điều phối transaction, lock row và dispatch job.
+- Không trả trực tiếp Eloquent query phức tạp cho controller.
+
+### Repository Layer
+
+- Chịu trách nhiệm truy vấn dữ liệu qua Eloquent.
+- Tách logic query phức tạp khỏi Service.
+- Luôn cân nhắc eager loading để tránh N+1 query.
+
+### DTO hoặc Data Objects
+
+- Dùng cho các payload phức tạp như tạo event, tạo zones, checkout seats.
+- Giúp service nhận dữ liệu rõ ràng thay vì truyền array rời rạc.
+
+### API Resource Layer
+
+- Dùng Laravel API Resource để chuẩn hóa dữ liệu trả về.
+- Không trả trực tiếp toàn bộ model nếu không cần thiết.
+- Ẩn các trường nhạy cảm hoặc trường nội bộ.
+
+## 6. Thiết kế database chính
+
+### users
+
+Lưu tài khoản và phân quyền.
+
+- `name`
+- `email`
+- `password`
+- `role`: `admin`, `organizer`, `customer`
+- `gender`
+- `birthday`
+
+### events
+
+Lưu thông tin sự kiện và cấu hình map.
+
+- `organizer_id`
+- `name`
+- `description`
+- `venue`
+- `starts_at`
+- `ends_at`
+- `status`: `pending`, `approved`, `rejected`
+- `display_type`: `rectangular`, `arc`, `stadium`
+- `master_width`
+- `master_length`
+
+### zones
+
+Lưu các vùng trong sơ đồ sự kiện.
+
+- `event_id`
+- `name`
+- `price`
+- `color`
+- `icon_url`
+- `pos_x`
+- `pos_y`
+- `width`
+- `length`
+- `is_seating`
+
+### seats
+
+Lưu từng ghế được sinh từ seating zone.
+
+- `zone_id`
+- `row_index`
+- `col_index`
+- `status`: `available`, `locked`, `sold`
+- `locked_by`
+- `locked_at`
+
+### orders
+
+Lưu giao dịch mua vé.
+
+- `order_code`
+- `customer_id`
+- `event_id`
+- `subtotal_amount`
+- `total_amount`
+- `currency`
+- `status`: `pending`, `paid`, `cancelled`, `expired`
+- `payment_method`
+- `payment_reference`
+- `paid_at`
+- `expires_at`
+
+### tickets
+
+Lưu vé điện tử QR Code.
+
+- `ticket_code`
+- `order_id`
+- `event_id`
+- `seat_id`
+- `customer_id`
+- `qr_code`
+- `status`: `valid`, `used`, `void`
+- `issued_at`
+- `checked_in_at`
+
+## 7. Best practices Laravel cho TicketRush
+
+### Authentication và Authorization
+
+- Sử dụng Laravel Sanctum cho API token authentication.
+- Tạo middleware kiểm tra role: `admin`, `organizer`, `customer`.
+- Sử dụng Policy để kiểm tra quyền sở hữu tài nguyên.
+- Organizer chỉ được sửa event thuộc về mình.
+- Customer chỉ được xem order và ticket của chính mình.
+- Admin có quyền kiểm duyệt và quản trị toàn hệ thống.
+
+### Validation
+
+- Mỗi API ghi dữ liệu phải có Form Request riêng.
+- Validate enum-like fields bằng `Rule::in()`.
+- Validate map boundary:
+  - `pos_x + width <= master_width`
+  - `pos_y + length <= master_length`
+- Không cho tạo zone có kích thước bằng 0.
+- Không cho checkout ghế không thuộc cùng một event.
+- Không cho checkout ghế đang `locked` bởi user khác hoặc đã `sold`.
+
+### Transaction và concurrency
+
+- Luồng giữ ghế và thanh toán bắt buộc dùng `DB::transaction()`.
+- Khi chọn ghế phải query bằng `lockForUpdate()`.
+- Không update trạng thái ghế ngoài transaction.
+- Tạo order, tickets và cập nhật seats phải nằm trong cùng transaction khi xác nhận thanh toán.
+- Luôn kiểm tra lại trạng thái ghế ngay trước khi chuyển sang `sold`.
+
+### Queue, Job và Scheduler
+
+- Dùng Scheduler để chạy job nhả ghế lock quá hạn mỗi phút.
+- Các tác vụ nặng nên đưa vào queue:
+  - Gửi email vé QR.
+  - Sinh file PDF vé.
+  - Gửi notification.
+  - Tổng hợp báo cáo doanh thu.
+- Job phải có retry, backoff và logging khi fail.
+
+### API response standard
+
+Tất cả API nên trả về JSON thống nhất:
 
 ```json
 {
@@ -37,7 +274,7 @@ Content-Type: application/json
 }
 ```
 
-### Standard error response
+Khi lỗi:
 
 ```json
 {
@@ -47,1299 +284,117 @@ Content-Type: application/json
 }
 ```
 
-### Auth method
-
-- API authentication uses Laravel Sanctum Bearer token.
-- Login and email verification return token.
-- FE must store token securely and send it in `Authorization` header.
-
-### Roles
-
-| Role | Description |
-|---|---|
-| `admin` | System administrator. Can manage/approve events. |
-| `organizer` | Event organizer. Can create and manage own events. |
-| `customer` | Event customer. Can browse events, book seats, and manage tickets. |
-
-## 2. Auth APIs
-
-### 2.1 Customer register
-
-```txt
-POST /api/auth/register/customer
-```
-
-Auth: Public
-
-Request body:
-
-```json
-{
-  "name": "Nguyen Van A",
-  "email": "customer@example.com",
-  "password": "password",
-  "password_confirmation": "password",
-  "gender": "male",
-  "birthday": "2000-01-01"
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `name` | Yes | string, max 255 |
-| `email` | Yes | valid email, unique in users |
-| `password` | Yes | string, min 6, confirmed |
-| `password_confirmation` | Yes | must match password |
-| `gender` | No | `male`, `female`, `other` |
-| `birthday` | No | date, before today |
-
-Behavior:
-
-- Creates user with `role = customer`.
-- Sends 6-digit verification code to email.
-- Account cannot login until email is verified.
-
-Success response `201`:
-
-```json
-{
-  "success": true,
-  "message": "Registration successful. Please check your email for the verification code.",
-  "data": {
-    "user_id": 1,
-    "email": "customer@example.com"
-  }
-}
-```
-
-### 2.2 Organizer register
-
-```txt
-POST /api/auth/register/organizer
-```
-
-Auth: Public
-
-Request body:
-
-```json
-{
-  "name": "Tran Van B",
-  "email": "organizer@example.com",
-  "password": "password",
-  "password_confirmation": "password",
-  "organizer_name": "ABC Event Company",
-  "tax_code": "0123456789"
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `name` | Yes | string, max 255 |
-| `email` | Yes | valid email, unique in users |
-| `password` | Yes | string, min 6, confirmed |
-| `password_confirmation` | Yes | must match password |
-| `organizer_name` | Yes | string, max 255 |
-| `tax_code` | Yes | string, max 50, unique in users |
-
-Behavior:
-
-- Creates user with `role = organizer`.
-- Sends 6-digit verification code to email.
-- Account cannot login until email is verified.
-
-Success response `201`:
-
-```json
-{
-  "success": true,
-  "message": "Registration successful. Please check your email for the verification code.",
-  "data": {
-    "user_id": 2,
-    "email": "organizer@example.com"
-  }
-}
-```
-
-### 2.3 Verify email
-
-```txt
-POST /api/auth/verify
-```
-
-Auth: Public
-
-Request body:
-
-```json
-{
-  "email": "customer@example.com",
-  "code": "123456"
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `email` | Yes | valid email, exists in users |
-| `code` | Yes | string, exactly 6 characters |
-
-Behavior:
-
-- Verifies the registration code.
-- Sets `email_verified_at`.
-- Deletes used verification code.
-- Returns Sanctum token.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Email verified successfully.",
-  "data": {
-    "token": "1|plain-text-token",
-    "user": {
-      "id": 1,
-      "name": "Nguyen Van A",
-      "email": "customer@example.com",
-      "role": "customer"
-    }
-  }
-}
-```
-
-Error response `422`:
-
-```json
-{
-  "success": false,
-  "message": "Invalid or expired verification code."
-}
-```
-
-### 2.4 Resend verification code
-
-```txt
-POST /api/auth/resend-code
-```
-
-Auth: Public
-
-Request body:
-
-```json
-{
-  "email": "customer@example.com"
-}
-```
-
-Behavior:
-
-- Deletes old registration verification codes for the email.
-- Sends a new 6-digit verification code.
-- Code expires after 15 minutes.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "A new verification code has been sent to your email."
-}
-```
-
-### 2.5 Login
-
-```txt
-POST /api/auth/login
-```
-
-Auth: Public
-
-Request body:
-
-```json
-{
-  "email": "customer@example.com",
-  "password": "password"
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `email` | Yes | valid email |
-| `password` | Yes | string |
-
-Behavior:
-
-- Checks email and password.
-- Blocks login if email is not verified.
-- If email is unverified, sends a new verification code.
-- Returns Sanctum token if successful.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Login successful.",
-  "data": {
-    "token": "1|plain-text-token",
-    "user": {
-      "id": 1,
-      "name": "Nguyen Van A",
-      "email": "customer@example.com",
-      "role": "customer"
-    }
-  }
-}
-```
-
-Invalid credentials `401`:
-
-```json
-{
-  "success": false,
-  "message": "Invalid email or password."
-}
-```
-
-Unverified email `403`:
-
-```json
-{
-  "success": false,
-  "message": "Email not verified. A new verification code has been sent to your email."
-}
-```
-
-### 2.6 Get current user
-
-```txt
-GET /api/auth/me
-```
-
-Auth: Bearer token required
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "Nguyen Van A",
-    "email": "customer@example.com",
-    "role": "customer",
-    "gender": "male",
-    "birthday": "2000-01-01",
-    "organizer_name": null,
-    "tax_code": null,
-    "email_verified_at": "2026-05-11T02:00:00.000000Z"
-  }
-}
-```
-
-### 2.7 Logout
-
-```txt
-POST /api/auth/logout
-```
-
-Auth: Bearer token required
-
-Behavior:
-
-- Revokes current Sanctum token.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Logged out successfully."
-}
-```
-
-## 3. Demo seed data
-
-Run all default demo seeders:
-
-```powershell
-php artisan db:seed
-```
-
-Or run only demo data:
-
-```powershell
-php artisan db:seed --class=DemoDataSeeder
-```
-
-All demo accounts use password:
-
-```txt
-password
-```
-
-### 3.1 Demo accounts
-
-| Role | Email | Password | Notes |
-|---|---|---|---|
-| `admin` | `admin@ticketrush.com` | `password` | Default system admin. |
-| `organizer` | `organizer.music@ticketrush.com` | `password` | Organizer for music, DJ, theater, conference events. |
-| `organizer` | `organizer.sport@ticketrush.com` | `password` | Organizer for sport, workshop, comedy events. |
-| `customer` | `customer@ticketrush.com` | `password` | Verified customer account. |
-| `customer` | `customer2@ticketrush.com` | `password` | Verified customer account. |
-
-### 3.2 Demo events
-
-The demo seeder creates approved, pending, and rejected events for API testing.
-
-| Event | Category | Status | Ticket Sale Status | Featured | Special |
-|---|---|---|---|---|---|---|
-| Neon Nights Festival 2024 | `dj` | `approved` | `on_sale` | Yes | Yes |
-| Chung Kết Cúp Bóng Đá Vô Địch Quốc Gia | `sport` | `approved` | `on_sale` | Yes | Yes |
-| The Midnight Sounds - Asia Tour 2024 | `music` | `approved` | `on_sale` | No | No |
-| Tech Summit Vietnam: AI & Tương lai | `conference` | `approved` | `not_started` | No | No |
-| Ravetopia 2024: Đêm Giao Thừa | `dj` | `approved` | `not_started` | No | No |
-| Vở Nhạc Kịch: Tiếng Gọi Nơi Hoang Dã | `theater` | `approved` | `on_sale` | No | No |
-| Workshop Sáng tạo Nội dung 2024 | `workshop` | `pending` | `not_started` | No | No |
-| Comedy Night: Cười Xuyên Đêm | `comedy` | `rejected` | `ended` | No | No |
-
-Each demo event includes:
-
-- Two seating zones: `VIP`, `Standard`.
-- One non-seating walkway zone: `Lối đi trung tâm`.
-- Generated seats with sample statuses: `available`, `locked`, `sold`.
-
-### 3.3 Admin account
-
-```txt
-email: admin@ticketrush.com
-password: password
-```
-
-Admin-only seed command:
-
-```powershell
-php artisan db:seed --class=AdminSeeder
-```
-
-## 4. Role middleware test APIs
-
-All endpoints require Bearer token.
-
-### 4.1 Admin ping
-
-```txt
-GET /api/admin/ping
-```
-
-Role: `admin`
-
-Success:
-
-```json
-{
-  "success": true,
-  "message": "Admin access granted."
-}
-```
-
-### 4.2 Organizer ping
-
-```txt
-GET /api/organizer/ping
-```
-
-Role: `organizer`
-
-Success:
-
-```json
-{
-  "success": true,
-  "message": "Organizer access granted."
-}
-```
-
-### 4.3 Customer ping
-
-```txt
-GET /api/customer/ping
-```
-
-Role: `customer`
-
-Success:
-
-```json
-{
-  "success": true,
-  "message": "Customer access granted."
-}
-```
-
-Forbidden response `403`:
-
-```json
-{
-  "success": false,
-  "message": "Forbidden. You do not have permission to access this resource."
-}
-```
-
-## 5. Event categories
-
-Backend stores and returns only the category `key`.
-
-Current multilingual policy:
-
-- TicketRush does not support multilingual event content yet.
-- Event fields such as `name`, `description`, and `venue` are currently single-language text.
-- Category labels below are Vietnamese display suggestions for FE.
-- If multilingual support is needed later, update this documentation and API design first.
-
-### 5.1 Supported category keys
-
-| Key | Vietnamese label suggestion | Suggested icon |
-|---|---|---|
-| `music` | Nhạc sống | `music` |
-| `dj` | DJ / EDM | `disc` |
-| `theater` | Sân khấu & Nghệ thuật | `theater` |
-| `sport` | Thể thao | `trophy` |
-| `workshop` | Hội thảo & Workshop | `users` |
-| `conference` | Hội nghị | `presentation` |
-| `comedy` | Hài kịch | `smile` |
-| `family` | Gia đình | `heart` |
-| `other` | Khác | `ticket` |
-
-### 5.2 FE TypeScript const suggestion
-
-```ts
-export const EVENT_CATEGORY_KEYS = [
-  'music',
-  'dj',
-  'theater',
-  'sport',
-  'workshop',
-  'conference',
-  'comedy',
-  'family',
-  'other',
-] as const;
-
-export type EventCategoryKey = (typeof EVENT_CATEGORY_KEYS)[number];
-
-export const EVENT_CATEGORIES: Array<{
-  key: EventCategoryKey;
-  label: string;
-  icon: string;
-}> = [
-  { key: 'music', label: 'Nhạc sống', icon: 'music' },
-  { key: 'dj', label: 'DJ / EDM', icon: 'disc' },
-  { key: 'theater', label: 'Sân khấu & Nghệ thuật', icon: 'theater' },
-  { key: 'sport', label: 'Thể thao', icon: 'trophy' },
-  { key: 'workshop', label: 'Hội thảo & Workshop', icon: 'users' },
-  { key: 'conference', label: 'Hội nghị', icon: 'presentation' },
-  { key: 'comedy', label: 'Hài kịch', icon: 'smile' },
-  { key: 'family', label: 'Gia đình', icon: 'heart' },
-  { key: 'other', label: 'Khác', icon: 'ticket' },
-];
-```
-
-### 5.3 API category behavior
-
-- Event create/update accepts only supported category keys.
-- Public event APIs return the category key in `category`.
-- FE should map `category` to a display label from its local constants.
-- Do not expect category labels from backend event objects.
-
-## 6. Public Event APIs
-
-Public event APIs can be used by both anonymous users and logged-in customers.
-
-Only events with `status = approved` are returned.
-
-### 6.1 Categories
-
-```txt
-GET /api/categories
-```
-
-Auth: Public
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": [
-    { "key": "music", "name": "Nhạc sống", "icon": "music" },
-    { "key": "dj", "name": "DJ / EDM", "icon": "disc" },
-    { "key": "theater", "name": "Sân khấu & Nghệ thuật", "icon": "theater" },
-    { "key": "sport", "name": "Thể thao", "icon": "trophy" },
-    { "key": "workshop", "name": "Hội thảo & Workshop", "icon": "users" },
-    { "key": "conference", "name": "Hội nghị", "icon": "presentation" },
-    { "key": "comedy", "name": "Hài kịch", "icon": "smile" },
-    { "key": "family", "name": "Gia đình", "icon": "heart" },
-    { "key": "other", "name": "Khác", "icon": "ticket" }
-  ]
-}
-```
-
-FE usage: map `key` để filter, `name` để hiển thị label, `icon` để render icon.
-
-### 6.2 Event list
-
-```txt
-GET /api/events
-```
-
-Auth: Public
-
-Query parameters (all optional):
-
-| Name | Required | Description |
-|---|---:|---|
-| `category` | No | Filter by category key |
-| `q` | No | Search keyword across name, description, venue |
-| `starts_after` | No | Event starts at or after this date (ISO 8601) |
-| `starts_before` | No | Event starts at or before this date (ISO 8601) |
-| `sale_starts_after` | No | Ticket sale starts at or after this date |
-| `sale_starts_before` | No | Ticket sale starts at or before this date |
-| `ticket_status` | No | `on_sale`, `sold_out`, `not_started`, `ended` |
-| `is_featured` | No | `1` to filter featured events |
-| `is_special` | No | `1` to filter special events |
-| `trending` | No | `1` to sort by tickets sold in last 30 days |
-| `limit` | No | Max number of results (returns array, no pagination) |
-| `per_page` | No | Page size for pagination, default 12 |
-
-Behavior:
-
-- If `limit` is provided, returns a plain array without pagination `meta`.
-- If `per_page` is used (or default), returns paginated response with `meta`.
-- `trending=1` automatically filters `on_sale` events with available seats and sorts by `tickets_sold_count` descending.
-- Default order (without `trending`): `is_featured` desc → `sort_order` → `starts_at`.
-
-**Homepage section examples:**
-
-Featured hero (limit 2):
-
-```txt
-GET /api/events?is_featured=1&limit=2
-```
-
-Special events (limit 8):
-
-```txt
-GET /api/events?is_special=1&limit=8
-```
-
-Trending events (limit 6):
-
-```txt
-GET /api/events?trending=1&limit=6
-```
-
-This week events — FE passes week bounds:
-
-```txt
-GET /api/events?starts_after=2024-11-11T00:00:00&starts_before=2024-11-17T23:59:59&limit=6
-```
-
-This month events — FE passes month bounds:
-
-```txt
-GET /api/events?starts_after=2024-11-01T00:00:00&starts_before=2024-11-30T23:59:59&limit=6
-```
-
-Upcoming sale events:
-
-```txt
-GET /api/events?sale_starts_after=2024-11-12T00:00:00&limit=6
-```
-
-Category filter:
-
-```txt
-GET /api/events?category=music&limit=12
-```
-
-Search + ticket status (paginated):
-
-```txt
-GET /api/events?q=festival&ticket_status=on_sale&per_page=12
-```
-
-Success response (with `limit` — no pagination):
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Neon Nights Festival 2024",
-      "description": "Đêm nhạc điện tử bùng nổ với dàn line-up quốc tế.",
-      "category": "dj",
-      "thumbnail_url": "https://example.com/neon-thumb.jpg",
-      "banner_url": "https://example.com/neon-banner.jpg",
-      "venue": "Nhà thi đấu Phú Thọ",
-      "starts_at": "2024-11-15T20:00:00+07:00",
-      "ends_at": "2024-11-15T23:00:00+07:00",
-      "ticket_sale_starts_at": "2024-11-01T10:00:00+07:00",
-      "ticket_sale_ends_at": "2024-11-13T23:59:00+07:00",
-      "is_sold_out": false,
-      "ticket_sale_status": "on_sale",
-      "display_type": "stadium",
-      "is_featured": true,
-      "organizer": {
-        "id": 2,
-        "name": "Tran Van B",
-        "organizer_name": "ABC Event Company"
-      }
-    }
-  ]
-}
-```
-
-Success response (paginated — default or `per_page`):
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Neon Nights Festival 2024",
-      "category": "dj",
-      "thumbnail_url": "https://example.com/neon-thumb.jpg",
-      "venue": "Nhà thi đấu Phú Thọ",
-      "starts_at": "2024-11-15T20:00:00+07:00",
-      "ends_at": "2024-11-15T23:00:00+07:00",
-      "ticket_sale_starts_at": "2024-11-01T10:00:00+07:00",
-      "ticket_sale_ends_at": "2024-11-13T23:59:00+07:00",
-      "is_sold_out": false,
-      "ticket_sale_status": "on_sale",
-      "display_type": "stadium",
-      "is_featured": true,
-      "organizer": {
-        "id": 2,
-        "name": "Tran Van B",
-        "organizer_name": "ABC Event Company"
-      }
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 1,
-    "per_page": 12,
-    "total": 1
-  }
-}
-```
-
-### 6.3 Event detail
-
-```txt
-GET /api/events/{event}
-```
-
-Auth: Public
-
-Behavior:
-
-- Returns event only if `status = approved`.
-- Returns `404` if event is not approved.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "Neon Nights Festival 2024",
-    "description": "Đêm nhạc điện tử bùng nổ với dàn line-up quốc tế.",
-    "category": "dj",
-    "thumbnail_url": "https://example.com/neon-thumb.jpg",
-    "banner_url": "https://example.com/neon-banner.jpg",
-    "venue": "Nhà thi đấu Phú Thọ",
-    "starts_at": "2024-11-15T20:00:00+07:00",
-    "ends_at": "2024-11-15T23:00:00+07:00",
-    "ticket_sale_starts_at": "2024-11-01T10:00:00+07:00",
-    "ticket_sale_ends_at": "2024-11-13T23:59:00+07:00",
-    "is_sold_out": false,
-    "ticket_sale_status": "on_sale",
-    "display_type": "stadium",
-    "is_featured": true,
-    "organizer": {
-      "id": 2,
-      "name": "Tran Van B",
-      "organizer_name": "ABC Event Company"
-    }
-  }
-}
-```
-
-## 7. Organizer Event APIs
-
-Organizer event APIs require Bearer token and role `organizer`.
-
-### 7.1 List organizer events
-
-```txt
-GET /api/organizer/events
-```
-
-Query parameters:
-
-| Name | Required | Description |
-|---|---:|---|
-| `status` | No | Filter by `pending`, `approved`, `rejected` |
-| `category` | No | Filter by category key |
-| `starts_after` | No | Event starts at or after this date |
-| `starts_before` | No | Event starts at or before this date |
-| `per_page` | No | Page size, default 12 |
-
-Example:
-
-```txt
-GET /api/organizer/events?status=pending&category=dj&per_page=12
-```
-
-Response:
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "organizer_id": 2,
-      "name": "Neon Nights Festival 2024",
-      "description": "Đêm nhạc điện tử bùng nổ với dàn line-up quốc tế.",
-      "category": "dj",
-      "thumbnail_url": "https://example.com/neon-thumb.jpg",
-      "banner_url": "https://example.com/neon-banner.jpg",
-      "is_featured": true,
-      "is_special": false,
-      "sort_order": 1,
-      "venue": "Nhà thi đấu Phú Thọ",
-      "starts_at": "2024-11-15T20:00:00+07:00",
-      "ends_at": "2024-11-15T23:00:00+07:00",
-      "ticket_sale_starts_at": "2024-11-01T10:00:00+07:00",
-      "ticket_sale_ends_at": "2024-11-13T23:59:00+07:00",
-      "is_sold_out": false,
-      "ticket_sale_status": "on_sale",
-      "status": "pending",
-      "display_type": "stadium",
-      "master_width": 80,
-      "master_length": 60
-    }
-  ]
-}
-```
-
-### 7.2 Create organizer event
-
-```txt
-POST /api/organizer/events
-```
-
-Request body:
-
-```json
-{
-  "name": "Neon Nights Festival 2024",
-  "description": "Đêm nhạc điện tử bùng nổ với dàn line-up quốc tế.",
-  "category": "dj",
-  "thumbnail_url": "https://example.com/neon-thumb.jpg",
-  "banner_url": "https://example.com/neon-banner.jpg",
-  "is_featured": true,
-  "sort_order": 1,
-  "venue": "Nhà thi đấu Phú Thọ",
-  "starts_at": "2024-11-15 20:00:00",
-  "ends_at": "2024-11-15 23:00:00",
-  "ticket_sale_starts_at": "2024-11-01 10:00:00",
-  "ticket_sale_ends_at": "2024-11-13 23:59:00",
-  "display_type": "stadium",
-  "master_width": 80,
-  "master_length": 60
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `name` | Yes | string, max 255 |
-| `description` | No | string |
-| `category` | Yes | one of supported category keys |
-| `thumbnail_url` | No | string, max 2048 |
-| `banner_url` | No | string, max 2048 |
-| `is_featured` | No | boolean |
-| `is_special` | No | boolean |
-| `sort_order` | No | integer, min 0 |
-| `venue` | No | string, max 255 |
-| `starts_at` | No | date |
-| `ends_at` | No | date, after_or_equal starts_at |
-| `ticket_sale_starts_at` | No | date |
-| `ticket_sale_ends_at` | No | date, after_or_equal ticket_sale_starts_at |
-| `display_type` | Yes | `rectangular`, `arc`, `stadium` |
-| `master_width` | Yes | integer, min 1, max 1000 |
-| `master_length` | Yes | integer, min 1, max 1000 |
-
-Behavior:
-
-- `organizer_id` is taken from authenticated user.
-- `status` is automatically set to `pending`.
-- Admin approval is required before the event appears publicly.
-
-Success response `201`:
-
-```json
-{
-  "success": true,
-  "message": "Event created successfully and is waiting for admin approval.",
-  "data": {
-    "id": 1,
-    "organizer_id": 2,
-    "name": "Neon Nights Festival 2024",
-    "description": "Đêm nhạc điện tử bùng nổ với dàn line-up quốc tế.",
-    "category": "dj",
-    "thumbnail_url": "https://example.com/neon-thumb.jpg",
-    "banner_url": "https://example.com/neon-banner.jpg",
-    "is_featured": true,
-    "is_special": false,
-    "sort_order": 1,
-    "venue": "Nhà thi đấu Phú Thọ",
-    "starts_at": "2024-11-15T20:00:00+07:00",
-    "ends_at": "2024-11-15T23:00:00+07:00",
-    "ticket_sale_starts_at": null,
-    "ticket_sale_ends_at": null,
-    "is_sold_out": false,
-    "ticket_sale_status": "on_sale",
-    "status": "pending",
-    "display_type": "stadium",
-    "master_width": 80,
-    "master_length": 60
-  }
-}
-```
-
-### 7.3 Show organizer event
-
-```txt
-GET /api/organizer/events/{event}
-```
-
-Behavior:
-
-- Organizer can only view events owned by themselves.
-- Returns `403` if accessing another organizer's event.
-
-### 7.4 Update organizer event
-
-```txt
-PUT /api/organizer/events/{event}
-PATCH /api/organizer/events/{event}
-```
-
-Request body can be partial:
-
-```json
-{
-  "name": "Neon Nights Festival 2024 - Updated",
-  "category": "music",
-  "is_featured": true,
-  "sort_order": 2
-}
-```
-
-Behavior:
-
-- Organizer can only update events owned by themselves.
-- After update, `status` is reset to `pending` for admin review again.
-
-### 7.5 Delete organizer event
-
-```txt
-DELETE /api/organizer/events/{event}
-```
-
-Behavior:
-
-- Organizer can only delete events owned by themselves.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Event deleted successfully."
-}
-```
-
-## 8. Admin Event APIs
-
-Admin event APIs require Bearer token and role `admin`.
-
-Admin can update any event field, including `status` (approve/reject) and `is_special` (mark as special).
-
-### 8.1 Update event (approve / reject / mark special)
-
-```txt
-PUT /api/admin/events/{event}
-```
-
-Request body is partial — only send fields you want to change:
-
-**Approve event:**
-
-```json
-{
-  "status": "approved"
-}
-```
-
-**Reject event:**
-
-```json
-{
-  "status": "rejected"
-}
-```
-
-**Mark event as special:**
-
-```json
-{
-  "is_special": true
-}
-```
-
-**Mark as featured and special at the same time:**
-
-```json
-{
-  "is_featured": true,
-  "is_special": true,
-  "status": "approved"
-}
-```
-
-**Update ticket sale window:**
-
-```json
-{
-  "ticket_sale_starts_at": "2024-11-01 10:00:00",
-  "ticket_sale_ends_at": "2024-11-13 23:59:00"
-}
-```
-
-Validation:
-
-| Field | Required | Rule |
-|---|---:|---|
-| `name` | No | string, max 255 |
-| `description` | No | string |
-| `category` | No | one of supported category keys |
-| `thumbnail_url` | No | string, max 2048 |
-| `banner_url` | No | string, max 2048 |
-| `is_featured` | No | boolean |
-| `is_special` | No | boolean |
-| `sort_order` | No | integer, min 0 |
-| `venue` | No | string, max 255 |
-| `starts_at` | No | date |
-| `ends_at` | No | date, after_or_equal starts_at |
-| `ticket_sale_starts_at` | No | date |
-| `ticket_sale_ends_at` | No | date, after_or_equal ticket_sale_starts_at |
-| `status` | No | `pending`, `approved`, `rejected` |
-| `display_type` | No | `rectangular`, `arc`, `stadium` |
-| `master_width` | No | integer, min 1, max 1000 |
-| `master_length` | No | integer, min 1, max 1000 |
-
-Behavior:
-
-- Admin can update any event, regardless of organizer.
-- Only sent fields are updated; omitted fields remain unchanged.
-- `status` can be changed to `approved` or `rejected` directly.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Event updated successfully.",
-  "data": {
-    "id": 1,
-    "organizer_id": 2,
-    "name": "Neon Nights Festival 2024",
-    "status": "approved",
-    "is_special": true,
-    "is_featured": true,
-    "category": "dj"
-  }
-}
-```
-
-## 9. Customer Order & Ticket APIs
-
-Auth: Bearer token required. Role: `customer`.
-
-These APIs allow customers to view their own paid orders and issued tickets.
-
-### 9.1 List customer orders
-
-```txt
-GET /api/customer/orders
-```
-
-Query parameters:
-
-| Name | Required | Description |
-|---|---:|---|
-| `per_page` | No | Page size, default 12 |
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "order_code": "ORD-202411150001",
-      "event": {
-        "id": 1,
-        "name": "Neon Nights Festival 2024",
-        "thumbnail_url": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a",
-        "starts_at": "2024-11-15T20:00:00+07:00",
-        "venue": "Nhà thi đấu Phú Thọ, TP.HCM"
-      },
-      "subtotal_amount": "3000000.00",
-      "total_amount": "3150000.00",
-      "currency": "VND",
-      "status": "paid",
-      "payment_method": "mock",
-      "paid_at": "2024-11-10T10:30:00+07:00",
-      "expires_at": null,
-      "ticket_count": 2,
-      "created_at": "2024-11-10T10:25:00+07:00"
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 1,
-    "per_page": 12,
-    "total": 1
-  }
-}
-```
-
-### 9.2 Show customer order
-
-```txt
-GET /api/customer/orders/{order}
-```
-
-Behavior:
-
-- Customer can only view orders placed by themselves.
-- Returns `403` if accessing another customer's order.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "order_code": "ORD-202411150001",
-    "event": {
-      "id": 1,
-      "name": "Neon Nights Festival 2024",
-      "thumbnail_url": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a",
-      "starts_at": "2024-11-15T20:00:00+07:00",
-      "venue": "Nhà thi đấu Phú Thọ, TP.HCM"
-    },
-    "subtotal_amount": "3000000.00",
-    "total_amount": "3150000.00",
-    "currency": "VND",
-    "status": "paid",
-    "payment_method": "mock",
-    "payment_reference": "MOCK-REF-123456",
-    "paid_at": "2024-11-10T10:30:00+07:00",
-    "expires_at": null,
-    "created_at": "2024-11-10T10:25:00+07:00",
-    "tickets": [
-      {
-        "id": 1,
-        "ticket_code": "TICK-202411150001",
-        "qr_code": "QR-202411150001",
-        "status": "valid",
-        "issued_at": "2024-11-10T10:30:00+07:00",
-        "checked_in_at": null
-      }
-    ]
-  }
-}
-```
-
-### 9.3 List customer tickets
-
-```txt
-GET /api/customer/tickets
-```
-
-Query parameters:
-
-| Name | Required | Description |
-|---|---:|---|
-| `per_page` | No | Page size, default 12 |
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "ticket_code": "TICK-202411150001",
-      "qr_code": "QR-202411150001",
-      "status": "valid",
-      "issued_at": "2024-11-10T10:30:00+07:00",
-      "checked_in_at": null,
-      "event": {
-        "id": 1,
-        "name": "Neon Nights Festival 2024",
-        "thumbnail_url": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a",
-        "starts_at": "2024-11-15T20:00:00+07:00",
-        "venue": "Nhà thi đấu Phú Thọ, TP.HCM"
-      },
-      "seat": {
-        "id": 1,
-        "row_index": 1,
-        "col_index": 1,
-        "zone": {
-          "id": 1,
-          "name": "VIP",
-          "price": "1500000.00"
-        }
-      },
-      "order": {
-        "id": 1,
-        "order_code": "ORD-202411150001",
-        "total_amount": "3150000.00"
-      }
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 1,
-    "per_page": 12,
-    "total": 1
-  }
-}
-```
-
-### 9.4 Show customer ticket
-
-```txt
-GET /api/customer/tickets/{ticket}
-```
-
-Behavior:
-
-- Customer can only view tickets issued to themselves.
-- Returns `403` if accessing another customer's ticket.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "ticket_code": "TICK-202411150001",
-    "qr_code": "QR-202411150001",
-    "status": "valid",
-    "issued_at": "2024-11-10T10:30:00+07:00",
-    "checked_in_at": null,
-    "event": {
-      "id": 1,
-      "name": "Neon Nights Festival 2024",
-      "thumbnail_url": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a",
-      "starts_at": "2024-11-15T20:00:00+07:00",
-      "venue": "Nhà thi đấu Phú Thọ, TP.HCM"
-    },
-    "seat": {
-      "id": 1,
-      "row_index": 1,
-      "col_index": 1,
-      "zone": {
-        "id": 1,
-        "name": "VIP",
-        "price": "1500000.00"
-      }
-    },
-    "order": {
-      "id": 1,
-      "order_code": "ORD-202411150001",
-      "total_amount": "3150000.00"
-    },
-    "created_at": "2024-11-10T10:30:00+07:00"
-  }
-}
-```
-
-## 9. Current migration requirements
-
-Before manual testing, run:
-
-```powershell
-php artisan migrate
-php artisan db:seed --class=AdminSeeder
-```
-
-## 10. Mail configuration
-
-For real email delivery, configure SMTP in `.env`.
-
-For local development, use log mailer:
-
-```env
-MAIL_MAILER=log
-```
-
-Then read verification codes in:
-
-```txt
-storage/logs/laravel.log
-```
-
-## 10. Documentation update rule
-
-This file is the API source of truth for frontend integration.
-
-Whenever backend changes affect API behavior, update this file in the same task, including:
-
-- New routes.
-- Removed routes.
-- Changed request body.
-- Changed response fields.
-- Changed validation rules.
-- Changed auth or role requirements.
-- Changed status code or error message behavior.
-- Changed enum/category/status values.
-- Changed pagination or query parameters.
+### Eloquent và hiệu năng query
+
+- Luôn eager load quan hệ thường dùng bằng `with()`.
+- Tránh N+1 query khi load event map: event -> zones -> seats.
+- Chỉ select các trường cần thiết khi render map.
+- Thêm index cho các cột lọc nhiều:
+  - `events.status`
+  - `events.organizer_id`
+  - `zones.event_id`
+  - `seats.status`
+  - `seats.locked_at`
+  - `orders.customer_id`
+  - `orders.event_id`
+  - `tickets.customer_id`
+  - `tickets.event_id`
+- Dùng pagination cho danh sách events, orders và tickets.
+
+### Security
+
+- Không hardcode secret, token hoặc payment config trong source code.
+- Dùng `.env` cho cấu hình nhạy cảm.
+- Hash password bằng Laravel Hash.
+- Không trả `password`, `remember_token`, token nội bộ qua API.
+- Rate limit các API nhạy cảm:
+  - Login.
+  - Checkout.
+  - Lock seat.
+  - Validate QR.
+- Ghi log các hành động quan trọng như approve event, checkout, check-in vé.
+
+### QR Ticket
+
+- QR code nên chứa token/code duy nhất, không chứa toàn bộ thông tin nhạy cảm.
+- Khi scan QR, backend phải xác thực token trong database.
+- Vé chỉ được check-in một lần.
+- Nếu `checked_in_at` đã có giá trị thì không cho check-in lại.
+- Không cho refund sau khi ticket đã phát hành theo policy của hệ thống.
+
+### Testing
+
+Cần ưu tiên test các luồng rủi ro cao:
+
+- Admin duyệt hoặc từ chối event.
+- Organizer tạo map, zones và sinh seats.
+- Customer lock ghế thành công.
+- Hai customer cùng chọn một ghế, chỉ một người được lock.
+- Ghế lock quá hạn được release.
+- Thanh toán thành công tạo order, ticket và chuyển seat sang `sold`.
+- Không cho mua ghế đã `sold`.
+- Không cho check-in QR hai lần.
+
+### Coding convention
+
+- Dùng strict typing cho PHP khi tạo class mới.
+- Type hint đầy đủ tham số và kiểu trả về.
+- Business logic không đặt trong Controller.
+- Không dùng raw SQL nếu Eloquent/Query Builder đáp ứng được.
+- Nếu bắt buộc raw SQL, phải binding parameter để tránh SQL injection.
+- Dùng Enum class cho các trạng thái quan trọng nếu dự án đã sẵn sàng:
+  - UserRole
+  - EventStatus
+  - DisplayType
+  - SeatStatus
+  - OrderStatus
+  - TicketStatus
+
+## 8. Gợi ý module backend
+
+### Admin module
+
+- Quản lý user.
+- Duyệt event.
+- Xem danh sách order/ticket.
+- Xem log hệ thống.
+
+### Organizer module
+
+- CRUD event.
+- Thiết kế map.
+- CRUD zones.
+- Auto-generate seats.
+- Xem doanh thu và thống kê khách hàng.
+
+### Customer module
+
+- Browse events.
+- View event detail and seat map.
+- Lock seats.
+- Checkout.
+- View orders and tickets.
+
+### Check-in module
+
+- Scan QR.
+- Validate ticket.
+- Mark ticket as used.
+- Prevent duplicate check-in.
+
+## 9. Chính sách nghiệp vụ quan trọng
+
+- Vé đã bán không được hoàn tiền.
+- Ghế chỉ được giữ tối đa 10 phút.
+- Chỉ event đã được duyệt mới được bán vé.
+- Một seat chỉ được gắn với tối đa một ticket hợp lệ.
+- Một ticket chỉ được check-in một lần.
+- Organizer không được chỉnh sửa seat map khi event đã bắt đầu bán vé nếu thay đổi đó ảnh hưởng đến vé đã bán.
+- Mọi thao tác thanh toán, phát hành vé và check-in phải được logging.
+
+## 10. Quy tắc tài liệu API
+
+- `.agents/api-doc.md` là source of truth cho FE dev khi tích hợp API.
+- Mỗi khi backend thay đổi API, bắt buộc cập nhật `.agents/api-doc.md` trong cùng task.
+- Các thay đổi cần cập nhật gồm route mới, route bị xóa, request body, response fields, validation rules, auth/role requirement, status code, error message, enum/status/category values, pagination và query parameters.
+- Các file manual test như `.agents/auth-api-manual-test.md` và `.agents/event-api-manual-test.md` chỉ dùng để hỗ trợ test thủ công; nếu có mâu thuẫn thì ưu tiên `.agents/api-doc.md`.
