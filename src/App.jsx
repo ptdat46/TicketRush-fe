@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import BookingPage from './pages/BookingPage'
+import BookingSuccessPage from './pages/BookingSuccessPage'
 import EventListPage from './pages/EventListPage'
 import HomePage from './pages/HomePage'
 import MyProfilePage from './pages/MyProfilePage'
@@ -17,6 +20,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster position="top-right" toastOptions={{ style: { background: '#1a211c', border: '1px solid #3d4a40', color: '#dde5dc' } }} />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/events" element={<EventListPage />} />
@@ -25,6 +29,22 @@ function App() {
           <Route path="/admin/sign-in" element={<SignInPage expectedRole="admin" />} />
           <Route path="/organizer/sign-in" element={<SignInPage expectedRole="organizer" />} />
           <Route path="/organizer/register" element={<RegisterPage role="organizer" />} />
+          <Route
+            path="/events/:eventId/book"
+            element={
+              <ProtectedRoute roles={['customer']}>
+                <BookingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:orderId/success"
+            element={
+              <ProtectedRoute roles={['customer']}>
+                <BookingSuccessPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/my-ticket"
             element={

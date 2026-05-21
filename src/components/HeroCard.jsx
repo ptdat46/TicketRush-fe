@@ -1,10 +1,19 @@
+import { useNavigate } from 'react-router-dom'
 import { getEventImage, getTicketBadge } from '../utils/eventDisplay'
 
 function HeroCard({ event, featured = false }) {
+  const navigate = useNavigate()
   const badge = getTicketBadge(event)
+  const isUnavailable = event.ticket_sale_status !== 'on_sale' || event.is_sold_out
+
+  const handleBookingClick = () => {
+    if (!isUnavailable && event?.id) {
+      navigate(`/events/${event.id}/book`)
+    }
+  }
 
   return (
-    <article className="group relative min-h-[300px] cursor-pointer overflow-hidden rounded-2xl shadow-2xl">
+    <article className={`group relative min-h-[300px] overflow-hidden rounded-2xl shadow-2xl ${isUnavailable ? 'opacity-80' : 'cursor-pointer'}`} onClick={handleBookingClick}>
       <img
         alt={event.name}
         className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
@@ -16,7 +25,15 @@ function HeroCard({ event, featured = false }) {
           {event.name}
         </h2>
         <p className="mb-6 max-w-md text-zinc-300">{event.description}</p>
-        <button className="w-max rounded-full bg-[#20b36c] px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(32,179,108,0.3)] transition-colors hover:bg-[#78fcac]" type="button">
+        <button
+          className="w-max rounded-full bg-[#20b36c] px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(32,179,108,0.3)] transition-colors hover:bg-[#78fcac] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isUnavailable}
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation()
+            handleBookingClick()
+          }}
+          type="button"
+        >
           {badge.text}
         </button>
       </div>

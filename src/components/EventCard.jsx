@@ -1,12 +1,21 @@
 import { FiCalendar, FiMapPin } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import { formatEventDateTime, getEventImage, getTicketBadge } from '../utils/eventDisplay'
 
 function EventCard({ event }) {
+  const navigate = useNavigate()
   const badge = getTicketBadge(event)
-  const isUnavailable = event.ticket_sale_status === 'sold_out' || event.ticket_sale_status === 'ended' || event.is_sold_out
+  const isUnavailable = event.ticket_sale_status !== 'on_sale' || event.is_sold_out
+  const bookingPath = event?.id ? `/events/${event.id}/book` : '/events'
+
+  const handleBookingClick = () => {
+    if (!isUnavailable && event?.id) {
+      navigate(bookingPath)
+    }
+  }
 
   return (
-    <article className={`group flex h-full flex-col overflow-hidden rounded-xl border border-[#3d4a40] bg-[#252c26] shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-[#20b36c]/50 hover:bg-[#343b35] hover:shadow-[0_8px_30px_rgba(32,179,108,0.15)] ${isUnavailable ? 'opacity-80' : ''}`}>
+    <article className={`group flex h-full flex-col overflow-hidden rounded-xl border border-[#3d4a40] bg-[#252c26] shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-[#20b36c]/50 hover:bg-[#343b35] hover:shadow-[0_8px_30px_rgba(32,179,108,0.15)] ${isUnavailable ? 'opacity-80' : 'cursor-pointer'}`} onClick={handleBookingClick}>
       <div className={`relative aspect-[4/3] overflow-hidden ${isUnavailable ? 'grayscale' : ''}`}>
         <img
           alt={event.name}
@@ -40,6 +49,10 @@ function EventCard({ event }) {
               : 'border-[#20b36c]/20 bg-[#2f3631] text-[#78fcac] group-hover:bg-[#20b36c] group-hover:text-black'
           }`}
           disabled={isUnavailable}
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation()
+            handleBookingClick()
+          }}
           type="button"
         >
           {badge.text}
