@@ -3,52 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import Header from '../components/Header'
 import ZoneEditor from '../components/organizer/ZoneEditor'
 import { api } from '../utils/api'
-
-const CATEGORY_LABELS = {
-  music: 'Nhạc sống',
-  dj: 'DJ / EDM',
-  theater: 'Sân khấu & Nghệ thuật',
-  sport: 'Thể thao',
-  workshop: 'Hội thảo & Workshop',
-  conference: 'Hội nghị',
-  comedy: 'Hài kịch',
-  family: 'Gia đình',
-  other: 'Khác',
-}
-
-const STATUS_LABELS = {
-  pending: 'Chờ duyệt',
-  approved: 'Đã duyệt',
-  rejected: 'Từ chối',
-}
-
-const STATUS_CLASSES = {
-  pending: 'bg-[#2f3631] text-[#bccabd]',
-  approved: 'bg-[#59de92]/10 text-[#59de92]',
-  rejected: 'bg-red-500/10 text-red-300',
-}
-
-const TICKET_STATUS_LABELS = {
-  not_started: 'Chưa mở bán',
-  on_sale: 'Đang mở bán',
-  sold_out: 'Đã bán hết',
-  ended: 'Đã kết thúc',
-}
-
-function formatDate(value) {
-  if (!value) return 'Chưa có'
-  return new Date(value).toLocaleString('vi-VN', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-function formatCurrency(value) {
-  return Number(value || 0).toLocaleString('vi-VN') + ' VND'
-}
+import { EVENT_CATEGORY_LABELS, EVENT_STATUS_CLASSES, EVENT_STATUS_LABELS, TICKET_STATUS_LABELS, formatCurrency, formatEventDateTime, getDisplayTypeLabel } from '../utils/eventDisplay'
 
 function DetailItem({ label, value }) {
   return (
@@ -134,11 +89,11 @@ function OrganizerEventDetailPage() {
 
               <div className="p-6">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_CLASSES[event.status] || 'bg-[#2f3631] text-[#bccabd]'}`}>
-                    {STATUS_LABELS[event.status] || event.status || 'Chưa rõ'}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${EVENT_STATUS_CLASSES[event.status] || 'bg-[#2f3631] text-[#bccabd]'}`}>
+                    {EVENT_STATUS_LABELS[event.status] || event.status || 'Chưa rõ'}
                   </span>
                   <span className="rounded-full border border-[#3d4a40] px-3 py-1 text-xs font-semibold text-[#bccabd]">
-                    {CATEGORY_LABELS[event.category] || event.category || 'Khác'}
+                    {EVENT_CATEGORY_LABELS[event.category] || event.category || 'Khác'}
                   </span>
                   <span className="rounded-full border border-[#3d4a40] px-3 py-1 text-xs font-semibold text-[#bccabd]">
                     {TICKET_STATUS_LABELS[event.ticket_sale_status] || 'Chưa rõ trạng thái vé'}
@@ -152,11 +107,11 @@ function OrganizerEventDetailPage() {
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <DetailItem label="Địa điểm" value={event.venue} />
-              <DetailItem label="Bắt đầu" value={formatDate(event.starts_at)} />
-              <DetailItem label="Kết thúc" value={formatDate(event.ends_at)} />
+              <DetailItem label="Bắt đầu" value={formatEventDateTime(event.starts_at)} />
+              <DetailItem label="Kết thúc" value={formatEventDateTime(event.ends_at)} />
               <DetailItem
                 label="Sơ đồ"
-                value={`${event.display_type === 'stadium' ? 'Sân vận động' : 'Chữ nhật'} · ${event.master_width || 0} x ${event.master_length || 0}`}
+                value={`${getDisplayTypeLabel(event.display_type)} · ${event.master_width || 0} x ${event.master_length || 0}`}
               />
             </section>
 
@@ -167,11 +122,11 @@ function OrganizerEventDetailPage() {
               </div>
               <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#869488]">Mở bán</p>
-                <p className="mt-2 font-bold text-white">{formatDate(event.ticket_sale_starts_at)}</p>
+                <p className="mt-2 font-bold text-white">{formatEventDateTime(event.ticket_sale_starts_at)}</p>
               </div>
               <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#869488]">Đóng bán</p>
-                <p className="mt-2 font-bold text-white">{formatDate(event.ticket_sale_ends_at)}</p>
+                <p className="mt-2 font-bold text-white">{formatEventDateTime(event.ticket_sale_ends_at)}</p>
               </div>
             </section>
 

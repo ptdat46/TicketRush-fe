@@ -1,5 +1,36 @@
+export const EVENT_CATEGORY_LABELS = {
+  music: 'Nhạc sống',
+  dj: 'DJ / EDM',
+  theater: 'Sân khấu & Nghệ thuật',
+  sport: 'Thể thao',
+  workshop: 'Hội thảo & Workshop',
+  conference: 'Hội nghị',
+  comedy: 'Hài kịch',
+  family: 'Gia đình',
+  other: 'Khác',
+}
+
+export const EVENT_STATUS_LABELS = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã duyệt',
+  rejected: 'Từ chối',
+}
+
+export const EVENT_STATUS_CLASSES = {
+  pending: 'bg-[#2f3631] text-[#bccabd]',
+  approved: 'bg-[#59de92]/10 text-[#59de92]',
+  rejected: 'bg-red-500/10 text-red-300',
+}
+
+export const TICKET_STATUS_LABELS = {
+  not_started: 'Chưa mở bán',
+  on_sale: 'Đang mở bán',
+  sold_out: 'Đã bán hết',
+  ended: 'Đã kết thúc',
+}
+
 export function formatEventDateTime(value) {
-  if (!value) return 'Chưa cập nhật'
+  if (!value) return 'Chưa có'
 
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
@@ -10,6 +41,10 @@ export function formatEventDateTime(value) {
     timeZone: 'Asia/Ho_Chi_Minh',
     year: 'numeric',
   }).format(new Date(value))
+}
+
+export function formatCurrency(value) {
+  return `${Number(value || 0).toLocaleString('vi-VN')} VND`
 }
 
 export function getTicketBadge(event) {
@@ -53,4 +88,8 @@ export function getEventImage(event, type = 'thumbnail') {
   }
 
   return event?.thumbnail_url || event?.banner_url || '/logo.png'
+}
+
+export function getDisplayTypeLabel(value) {
+  return value === 'stadium' ? 'Sân vận động' : 'Chữ nhật'
 }

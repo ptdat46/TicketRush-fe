@@ -64,6 +64,8 @@ export const api = {
 
     post: (endpoint, data) => apiClient.post(endpoint, data),
 
+    patch: (endpoint, data) => apiClient.patch(endpoint, data),
+
     put: (endpoint, data) => apiClient.put(endpoint, data),
 
     delete: (endpoint, data = null) => {

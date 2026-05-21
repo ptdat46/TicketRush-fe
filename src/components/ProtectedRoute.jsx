@@ -1,11 +1,18 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 function ProtectedRoute({ children, roles }) {
+  const location = useLocation()
   const { isAuthenticated, role } = useAuth()
 
   if (!isAuthenticated) {
-    return <Navigate replace to="/sign-in" />
+    const loginPath = location.pathname.startsWith('/admin')
+      ? '/admin/sign-in'
+      : location.pathname.startsWith('/organizer')
+        ? '/organizer/sign-in'
+        : '/sign-in'
+
+    return <Navigate replace to={loginPath} />
   }
 
   if (roles?.length && !roles.includes(role)) {

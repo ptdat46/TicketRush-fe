@@ -1221,17 +1221,92 @@ Success response:
 
 Admin event APIs require Bearer token and role `admin`.
 
-Admin can update any event field, including `status` (approve/reject) and `is_special` (mark as special).
+Admin can list events, review pending events, update allowed event information, and configure homepage placement.
 
-### 8.1 Update event (approve / reject / mark special)
+Admin cannot update event bank information, master map configuration, zone count, zones, or zone prices through admin event update APIs.
+
+### 8.1 List events
+
+```txt
+GET /api/admin/events
+```
+
+Query parameters:
+
+| Name | Required | Rule | Description |
+|---|---:|---|---|
+| `status` | No | `pending`, `approved`, `rejected` | Filter by approval status |
+| `category` | No | string | Filter by category key |
+| `is_featured` | No | boolean | Filter homepage featured events |
+| `is_special` | No | boolean | Filter special events |
+| `search` | No | string, max 255 | Search by event `name` or `venue` |
+| `per_page` | No | integer, min 1, max 100 | Page size, default 12 |
+
+Example:
+
+```txt
+GET /api/admin/events?status=approved&category=dj&is_featured=true&per_page=12
+```
+
+Behavior:
+
+- Returns paginated events for all organizers.
+- Includes `organizer` when loaded.
+- Includes `zones_count`, `seats_count`, and `available_seats_count`.
+- Orders by newest created event first.
+
+### 8.2 List pending events
+
+```txt
+GET /api/admin/events/pending
+```
+
+Query parameters:
+
+- Same as `GET /api/admin/events`, except `status` is forced to `pending`.
+
+Behavior:
+
+- Returns only events with `status = pending`.
+- Use this endpoint for the admin approval queue.
+
+### 8.3 Show event
+
+```txt
+GET /api/admin/events/{event}
+```
+
+Behavior:
+
+- Admin can view any event regardless of organizer or status.
+- Includes `organizer`, `zones_count`, `seats_count`, and `available_seats_count`.
+
+### 8.4 Update allowed event information
 
 ```txt
 PUT /api/admin/events/{event}
 ```
 
-Request body is partial — only send fields you want to change:
+This is the admin API for editing event information. Request body is partial — only send fields you want to change.
 
-**Approve event:**
+**Edit event information:**
+
+```json
+{
+  "name": "Neon Nights Festival 2024 - Official",
+  "description": "Updated public event description.",
+  "category": "dj",
+  "thumbnail_url": "https://example.com/neon-thumb-new.jpg",
+  "banner_url": "https://example.com/neon-banner-new.jpg",
+  "venue": "SECC",
+  "starts_at": "2024-11-15 20:00:00",
+  "ends_at": "2024-11-15 23:00:00",
+  "ticket_sale_starts_at": "2024-11-01 10:00:00",
+  "ticket_sale_ends_at": "2024-11-13 23:59:00"
+}
+```
+
+**Update approval status directly:**
 
 ```json
 {
@@ -1247,7 +1322,7 @@ Request body is partial — only send fields you want to change:
 }
 ```
 
-**Mark event as special:**
+**Mark event as special directly:**
 
 ```json
 {
@@ -1255,7 +1330,7 @@ Request body is partial — only send fields you want to change:
 }
 ```
 
-**Mark as featured and special at the same time:**
+**Mark as featured and special directly:**
 
 ```json
 {
@@ -1292,15 +1367,23 @@ Validation:
 | `ticket_sale_starts_at` | No | date |
 | `ticket_sale_ends_at` | No | date, after_or_equal ticket_sale_starts_at |
 | `status` | No | `pending`, `approved`, `rejected` |
-| `display_type` | No | `rectangular`, `stadium` |
-| `master_width` | No | integer, min 1, max 1000 |
-| `master_length` | No | integer, min 1, max 1000 |
+| `display_type` | Prohibited | Admin cannot edit map type |
+| `master_width` | Prohibited | Admin cannot edit master map width |
+| `master_length` | Prohibited | Admin cannot edit master map length |
+| `bank_name` | Prohibited | Admin cannot edit bank information |
+| `bank_account_number` | Prohibited | Admin cannot edit bank information |
+| `bank_account_name` | Prohibited | Admin cannot edit bank information |
+| `zones` | Prohibited | Admin cannot edit zones from this endpoint |
+| `zone_count` | Prohibited | Admin cannot edit number of zones |
+| `zones_count` | Prohibited | Admin cannot edit number of zones |
+| `zone_prices` | Prohibited | Admin cannot edit zone prices |
 
 Behavior:
 
 - Admin can update any event, regardless of organizer.
 - Only sent fields are updated; omitted fields remain unchanged.
-- `status` can be changed to `approved` or `rejected` directly.
+- This endpoint can update `status`, but `PATCH /api/admin/events/{event}/review` is preferred for approving or rejecting pending events.
+- Sending prohibited fields returns `422` validation errors.
 
 Success response:
 
@@ -1316,6 +1399,100 @@ Success response:
     "is_special": true,
     "is_featured": true,
     "category": "dj"
+  }
+}
+```
+
+### 8.5 Review pending event
+
+```txt
+PATCH /api/admin/events/{event}/review
+```
+
+Request body:
+
+```json
+{
+  "status": "approved"
+}
+```
+
+Validation:
+
+| Field | Required | Rule |
+|---|---:|---|
+| `status` | Yes | `approved`, `rejected` |
+
+Behavior:
+
+- Only events currently in `pending` can be reviewed through this endpoint.
+- Approving changes `status` to `approved`.
+- Rejecting changes `status` to `rejected`.
+- If the event is not pending, returns `422`.
+
+Non-pending event error `422`:
+
+```json
+{
+  "success": false,
+  "message": "Only pending events can be reviewed from this endpoint."
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "Event review status updated successfully.",
+  "data": {
+    "id": 1,
+    "status": "approved"
+  }
+}
+```
+
+### 8.6 Update homepage settings
+
+```txt
+PATCH /api/admin/events/{event}/homepage
+```
+
+Request body is partial:
+
+```json
+{
+  "is_featured": true,
+  "is_special": true,
+  "sort_order": 5
+}
+```
+
+Validation:
+
+| Field | Required | Rule |
+|---|---:|---|
+| `is_featured` | No | boolean |
+| `is_special` | No | boolean |
+| `sort_order` | No | integer, min 0 |
+
+Behavior:
+
+- Use `is_featured` for featured homepage sections.
+- Use `is_special` for special event sections.
+- Use `sort_order` for manual ordering priority.
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "Event homepage settings updated successfully.",
+  "data": {
+    "id": 1,
+    "is_featured": true,
+    "is_special": true,
+    "sort_order": 5
   }
 }
 ```
