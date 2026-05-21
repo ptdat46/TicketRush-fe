@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { FiAlertTriangle, FiCalendar, FiClock, FiCreditCard, FiMapPin, FiRefreshCw, FiShield, FiTag, FiUsers } from 'react-icons/fi'
+import { FiAlertTriangle, FiArrowLeft, FiArrowRight, FiCalendar, FiClock, FiCreditCard, FiMail, FiMapPin, FiPhone, FiRefreshCw, FiTag, FiUser, FiUsers } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
 import Header from '../components/Header'
 import { useAuth } from '../contexts/AuthContext'
@@ -185,9 +185,8 @@ function SeatZone({ onSeatToggle, selectedSeatIds, zone }) {
   )
 }
 
-function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, selectedSeats, selectedSeatIds, zones, isBusy }) {
+function BookingView({ event, mapError, onCheckout, onSeatToggle, selectedSeats, selectedSeatIds, zones, isBusy }) {
   const total = selectedSeats.reduce((sum, seat) => sum + Number(seat.zone?.price || 0), 0)
-  const selectedLocked = selectedSeats.length > 0 && selectedSeats.every((seat) => seat.status === 'locked')
   const hasSeatMap = zones.length > 0
 
   return (
@@ -234,7 +233,7 @@ function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, s
               <div className="rounded-lg border border-dashed border-[#3d4a40] bg-[#09100b] p-8 text-center">
                 <p className="text-lg font-black text-white">Chưa có dữ liệu sơ đồ ghế</p>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#bccabd]">
-                  FE đã vào được phiên booking, nhưng backend chưa trả danh sách zone và seat cho customer. Khi có endpoint seat map, khu vực này sẽ render ghế thật và cho phép giữ ghế.
+                  FE đã vào được phiên booking, nhưng backend chưa trả danh sách zone và seat cho customer. Khi có endpoint seat map, khu vực này sẽ render ghế thật.
                 </p>
               </div>
             )}
@@ -245,7 +244,7 @@ function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, s
           <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#869488]">Phiên giữ ghế</p>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#869488]">Tóm tắt ghế</p>
                 <h2 className="mt-1 text-xl font-black text-white">Thanh toán</h2>
               </div>
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#20b36c] text-[#00210f]">
@@ -261,13 +260,13 @@ function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, s
 
             <div className="mt-5 space-y-3">
               {selectedSeats.length === 0 ? (
-                <p className="rounded-lg bg-[#0e1510] p-4 text-sm text-[#bccabd]">Chọn tối đa 10 ghế còn trống trên sơ đồ để bắt đầu giữ chỗ.</p>
+                <p className="rounded-lg bg-[#0e1510] p-4 text-sm text-[#bccabd]">Chọn tối đa 10 ghế còn trống trên sơ đồ.</p>
               ) : (
                 selectedSeats.map((seat) => (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-[#3d4a40] bg-[#0e1510] p-3" key={seat.id}>
                     <div>
                       <p className="font-bold text-white">{seat.zone?.name} - Ghế {getSeatLabel(seat)}</p>
-                      <p className="mt-1 text-xs text-[#bccabd]">{seat.status === 'locked' ? 'Đã giữ trong phiên của bạn' : 'Chưa giữ'}</p>
+                      <p className="mt-1 text-xs text-[#bccabd]">Sẽ giữ chỗ khi bấm Thanh toán</p>
                     </div>
                     <span className="text-sm font-black text-[#59de92]">{formatCurrency(seat.zone?.price)}</span>
                   </div>
@@ -288,17 +287,8 @@ function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, s
 
             <div className="mt-5 grid gap-3">
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#59de92]/40 bg-[#2f3631] px-5 py-3 text-sm font-black text-[#78fcac] transition-colors hover:bg-[#343b35] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isBusy || !hasSeatMap || selectedSeats.length === 0 || selectedLocked}
-                onClick={onLockSeats}
-                type="button"
-              >
-                <FiShield />
-                Giữ ghế 10 phút
-              </button>
-              <button
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#20b36c] px-5 py-3 text-sm font-black text-[#00210f] shadow-[0_0_22px_rgba(32,179,108,0.28)] transition-colors hover:bg-[#59de92] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isBusy || !hasSeatMap || selectedSeats.length === 0 || !selectedLocked}
+                disabled={isBusy || !hasSeatMap || selectedSeats.length === 0}
                 onClick={onCheckout}
                 type="button"
               >
@@ -307,15 +297,127 @@ function BookingView({ event, mapError, onCheckout, onLockSeats, onSeatToggle, s
               </button>
             </div>
           </div>
-
-          <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-5 text-sm leading-6 text-[#bccabd]">
-            <div className="mb-3 flex items-center gap-2 font-bold text-white">
-              <FiUsers className="text-[#59de92]" />
-              Lượt mua vé đang hoạt động
-            </div>
-            Ghế chỉ được giữ sau khi API lock thành công. Nếu ghế vừa bị người khác giữ, hệ thống sẽ báo và bạn có thể chọn ghế khác ngay trên sơ đồ.
-          </div>
         </aside>
+      </main>
+    </div>
+  )
+}
+
+function PaymentView({ customerForm, event, isBusy, onBack, onConfirm, onCustomerChange, onPaymentMethodChange, paymentMethod, selectedSeats }) {
+  const total = selectedSeats.reduce((sum, seat) => sum + Number(seat.zone?.price || 0), 0)
+  const paymentOptions = [
+    { icon: <FiCreditCard />, label: 'Ví MoMo', value: 'momo' },
+    { icon: <FiTag />, label: 'Chuyển khoản ngân hàng', value: 'bank_transfer' },
+    { icon: <FiCreditCard />, label: 'Thẻ Visa / Mastercard', value: 'credit_card' },
+  ]
+
+  return (
+    <div className="min-h-[calc(100vh-80px)] bg-[#0e1510] text-[#dde5dc]">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8">
+        <div className="mb-8">
+          <button className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#3d4a40] px-4 py-2 text-sm font-bold text-[#bccabd] transition-colors hover:border-[#59de92] hover:text-white" onClick={onBack} type="button">
+            <FiArrowLeft />
+            Quay lại chọn ghế
+          </button>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#59de92]">Bước 3/3: Xác nhận</p>
+              <h1 className="mt-2 text-3xl font-black text-white">Thanh toán</h1>
+            </div>
+            <div className="hidden w-64 grid-cols-3 gap-2 sm:grid">
+              <span className="h-1 rounded-full bg-[#20b36c]" />
+              <span className="h-1 rounded-full bg-[#20b36c]" />
+              <span className="h-1 rounded-full bg-[#2f3631]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
+          <section className="space-y-4">
+            <div className="rounded-xl border border-[#2f3631] bg-[#161d18] p-6">
+              <h2 className="mb-5 flex items-center gap-2 text-xl font-black text-white">
+                <FiUser className="text-[#20b36c]" />
+                Thông tin khách hàng
+              </h2>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#bccabd]">Họ và tên</span>
+                  <input className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] px-4 py-3 text-white outline-none transition-colors placeholder:text-[#869488] focus:border-[#20b36c] focus:ring-1 focus:ring-[#20b36c]" name="fullName" onChange={onCustomerChange} placeholder="Nhập họ và tên của bạn" type="text" value={customerForm.fullName} />
+                </label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#bccabd]">Email</span>
+                    <div className="relative">
+                      <FiMail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#869488]" />
+                      <input className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] py-3 pl-11 pr-4 text-white outline-none transition-colors placeholder:text-[#869488] focus:border-[#20b36c] focus:ring-1 focus:ring-[#20b36c]" name="email" onChange={onCustomerChange} placeholder="example@email.com" type="email" value={customerForm.email} />
+                    </div>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#bccabd]">Số điện thoại</span>
+                    <div className="relative">
+                      <FiPhone className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#869488]" />
+                      <input className="w-full rounded-lg border border-[#3d4a40] bg-[#2f3631] py-3 pl-11 pr-4 text-white outline-none transition-colors placeholder:text-[#869488] focus:border-[#20b36c] focus:ring-1 focus:ring-[#20b36c]" name="phone" onChange={onCustomerChange} placeholder="0901234567" type="tel" value={customerForm.phone} />
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#2f3631] bg-[#161d18] p-6">
+              <h2 className="mb-5 flex items-center gap-2 text-xl font-black text-white">
+                <FiCreditCard className="text-[#20b36c]" />
+                Phương thức thanh toán
+              </h2>
+              <div className="space-y-3">
+                {paymentOptions.map((option) => {
+                  const isSelected = paymentMethod === option.value
+                  return (
+                    <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors ${isSelected ? 'border-[#20b36c] bg-[#2f3631]' : 'border-[#3d4a40] bg-[#252c26] hover:border-[#869488]'}`} key={option.value}>
+                      <input checked={isSelected} className="h-4 w-4 accent-[#20b36c]" name="payment_method" onChange={() => onPaymentMethodChange(option.value)} type="radio" value={option.value} />
+                      <span className={`${isSelected ? 'text-[#20b36c]' : 'text-[#bccabd]'}`}>{option.icon}</span>
+                      <span className="font-bold text-white">{option.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          <aside className="h-fit rounded-xl border border-[#2f3631] bg-[#161d18] p-6 lg:sticky lg:top-24">
+            <h2 className="border-b border-[#2f3631] pb-4 text-xl font-black text-white">Tóm tắt đơn hàng</h2>
+            <div className="my-5 flex items-start gap-4">
+              <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-[#2f3631]">
+                <img alt={event?.name || 'Sự kiện'} className="h-full w-full object-cover" src={getEventImage(event, 'poster')} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="line-clamp-2 text-lg font-black leading-tight text-white">{event?.name || 'Sự kiện'}</h3>
+                <p className="mt-2 flex items-center gap-2 text-sm text-[#bccabd]"><FiCalendar />{formatEventDateTime(event?.starts_at)}</p>
+                <p className="mt-1 flex items-center gap-2 text-sm text-[#bccabd]"><FiMapPin />{event?.venue || 'Đang cập nhật địa điểm'}</p>
+              </div>
+            </div>
+
+            <div className="mb-5 space-y-3">
+              {selectedSeats.map((seat) => (
+                <div className="flex items-center justify-between gap-4 border-b border-dashed border-[#3d4a40] py-2" key={seat.id}>
+                  <span className="text-sm font-semibold text-white">1x {seat.zone?.name}-{getSeatLabel(seat)}</span>
+                  <span className="text-sm font-bold text-[#dde5dc]">{formatCurrency(seat.zone?.price)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-[#2f3631] pt-5">
+              <div className="flex items-end justify-between gap-4">
+                <span className="text-lg font-bold text-[#bccabd]">Tổng tiền</span>
+                <span className="text-2xl font-black text-[#20b36c]">{formatCurrency(total)}</span>
+              </div>
+              <button className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#20b36c] px-6 py-4 text-base font-black text-[#00391e] shadow-[0_0_18px_rgba(32,179,108,0.28)] transition-colors hover:bg-[#59de92] disabled:cursor-not-allowed disabled:opacity-50" disabled={isBusy || selectedSeats.length === 0} onClick={onConfirm} type="button">
+                Xác nhận thanh toán
+                <FiArrowRight />
+              </button>
+              <p className="mt-4 text-center text-xs leading-5 text-[#869488]">Bằng việc xác nhận, bạn đồng ý với Điều khoản và Chính sách bảo mật của TicketRush.</p>
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
   )
@@ -339,6 +441,12 @@ function BookingPage() {
   const [phase, setPhase] = useState('waiting')
   const [zones, setZones] = useState([])
   const [selectedSeats, setSelectedSeats] = useState([])
+  const [customerForm, setCustomerForm] = useState({
+    fullName: user?.name || user?.full_name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+  })
+  const [paymentMethod, setPaymentMethod] = useState('momo')
   const [isJoining, setIsJoining] = useState(true)
   const [isBusy, setIsBusy] = useState(false)
   const [mapError, setMapError] = useState('')
@@ -365,7 +473,7 @@ function BookingPage() {
     }
 
     setZones([])
-    setMapError('Chưa lấy được seat grid từ API. Theo api-doc hiện tại mới có API waiting room, lock ghế và checkout cho customer; endpoint trả zones + seats cho customer chưa được mô tả hoặc chưa mở quyền.')
+    setMapError('Chưa lấy được seat grid từ API. Backend chưa trả danh sách zone và seat cho customer hoặc chưa mở quyền.')
   }, [eventId])
 
   const refreshWaitingRoom = useCallback(async ({ silent = false } = {}) => {
@@ -378,12 +486,11 @@ function BookingPage() {
 
     setEntry(response.data)
     if (response.data?.can_enter_booking) {
-      setPhase('booking')
-      loadSeatMap()
+      setPhase((currentPhase) => (currentPhase === 'waiting' ? 'booking' : currentPhase))
     } else {
       setPhase('waiting')
     }
-  }, [eventId, loadSeatMap])
+  }, [eventId])
 
   useEffect(() => {
     let isMounted = true
@@ -425,13 +532,14 @@ function BookingPage() {
   }, [eventId, loadSeatMap])
 
   useEffect(() => {
-    const seconds = Math.max(3, Number(entry?.poll_after_seconds || 5))
+    const baseSeconds = Math.max(3, Number(entry?.poll_after_seconds || 5))
+    const seconds = phase === 'waiting' ? baseSeconds : 60
     const timer = window.setInterval(() => {
       refreshWaitingRoom({ silent: true })
     }, seconds * 1000)
 
     return () => window.clearInterval(timer)
-  }, [entry?.poll_after_seconds, refreshWaitingRoom])
+  }, [phase, entry?.poll_after_seconds, refreshWaitingRoom])
 
   useEffect(() => {
     if (!window.Echo || !user?.id) return undefined
@@ -446,8 +554,13 @@ function BookingPage() {
     entryChannel.listen('.waiting-room.entry.updated', (payload) => {
       setEntry(payload)
       if (payload?.can_enter_booking) {
-        setPhase('booking')
-        loadSeatMap()
+        setPhase((currentPhase) => {
+          if (currentPhase === 'waiting') {
+            loadSeatMap()
+            return 'booking'
+          }
+          return currentPhase
+        })
       }
     })
 
@@ -472,21 +585,30 @@ function BookingPage() {
   }
 
   const handleSeatToggle = (seat) => {
+    if (selectedSeatIds.has(seat.id)) {
+      setSelectedSeats((currentSeats) => currentSeats.filter((item) => item.id !== seat.id))
+      return
+    }
+
+    if (selectedSeats.length >= 10) {
+      toast.error('Bạn chỉ có thể chọn tối đa 10 ghế.')
+      return
+    }
+
     setSelectedSeats((currentSeats) => {
-      if (currentSeats.some((item) => item.id === seat.id)) {
-        return currentSeats.filter((item) => item.id !== seat.id)
-      }
-
-      if (currentSeats.length >= 10) {
-        toast.error('Bạn chỉ có thể chọn tối đa 10 ghế.')
-        return currentSeats
-      }
-
+      if (currentSeats.some((item) => item.id === seat.id)) return currentSeats
       return [...currentSeats, seat]
     })
   }
 
-  const handleLockSeats = async () => {
+  const handleCustomerChange = (event) => {
+    const { name, value } = event.target
+    setCustomerForm((currentForm) => ({ ...currentForm, [name]: value }))
+  }
+
+  const handleProceedToPayment = async () => {
+    if (selectedSeats.length === 0) return
+
     setIsBusy(true)
     const response = await api.post(`/customer/events/${eventId}/seats/lock`, {
       seat_ids: selectedSeats.map((seat) => seat.id),
@@ -494,19 +616,27 @@ function BookingPage() {
     setIsBusy(false)
 
     if (!response.success) {
-      toast.error(response.error || 'Không thể giữ ghế đã chọn.')
+      toast.error(response.error || 'Có ghế đã có người chọn rồi, vui lòng chọn ghế khác.')
       return
     }
 
-    patchSeats(response.data || [])
-    toast.success('Ghế đã được giữ trong 10 phút.')
+    const lockedSeats = Array.isArray(response.data) && response.data.length > 0
+      ? response.data
+      : selectedSeats.map((seat) => ({ ...seat, status: 'locked' }))
+
+    patchSeats(lockedSeats)
+    setSelectedSeats((currentSeats) => currentSeats.map((seat) => {
+      const lockedSeat = lockedSeats.find((item) => item.id === seat.id)
+      return lockedSeat ? { ...seat, ...lockedSeat, zone: seat.zone, status: lockedSeat.status || 'locked' } : { ...seat, status: 'locked' }
+    }))
+    setPhase('payment')
   }
 
-  const handleCheckout = async () => {
+  const handleConfirmPayment = async () => {
     setIsBusy(true)
     const response = await api.post(`/customer/events/${eventId}/orders`, {
       seat_ids: selectedSeats.map((seat) => seat.id),
-      payment_method: 'mock',
+      payment_method: paymentMethod,
       payment_reference: `MOCK-FE-${Date.now()}`,
     })
     setIsBusy(false)
@@ -531,13 +661,24 @@ function BookingPage() {
       <Header />
       {phase === 'waiting' ? (
         <WaitingRoomView event={event} entry={entry} isJoining={isJoining} onRefresh={() => refreshWaitingRoom()} />
+      ) : phase === 'payment' ? (
+        <PaymentView
+          customerForm={customerForm}
+          event={event}
+          isBusy={isBusy}
+          onBack={() => setPhase('booking')}
+          onConfirm={handleConfirmPayment}
+          onCustomerChange={handleCustomerChange}
+          onPaymentMethodChange={setPaymentMethod}
+          paymentMethod={paymentMethod}
+          selectedSeats={selectedSeats}
+        />
       ) : (
         <BookingView
           event={event}
           isBusy={isBusy}
           mapError={mapError}
-          onCheckout={handleCheckout}
-          onLockSeats={handleLockSeats}
+          onCheckout={handleProceedToPayment}
           onSeatToggle={handleSeatToggle}
           selectedSeatIds={selectedSeatIds}
           selectedSeats={selectedSeats}
@@ -549,3 +690,4 @@ function BookingPage() {
 }
 
 export default BookingPage
+
