@@ -1,119 +1,69 @@
-// utils/api.js
-import axios from 'axios';
-// import { setCookie, getCookie, removeCookie } from './cookie';
-import Cookies from 'js-cookie';
+import axios from 'axios'
+import { clearAuth, getAuthToken } from './authStorage'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
-// Tạo axios instance
 const apiClient = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Accept': 'application/json',
-    },
-});
+  baseURL: API_BASE_URL,
+  headers: { Accept: 'application/json' },
+})
 
-apiClient.interceptors.request.use(
-    (config) => {
-        const token = Cookies.get('authToken');
+apiClient.interceptors.request.use((config) => {
+  const token = getAuthToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.data && !(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json'
+  }
+  return config
+})
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+function handleUnauthorized() {
+  clearAuth()
+  const path = window.location.pathname || '/'
+  let target = '/sign-in'
+  if (path.startsWith('/admin')) target = '/admin/sign-in'
+  else if (path.startsWith('/organizer')) target = '/organizer/sign-in'
+  if (path !== target && path !== '/') {
+    window.location.replace(target)
+  }
+}
 
-        // Tự động set Content-Type cho JSON, bỏ qua cho FormData
-        if (config.data && !(config.data instanceof FormData)) {
-            config.headers['Content-Type'] = 'application/json';
-        }
-
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
-
-// Response interceptor - Xử lý response và error
 apiClient.interceptors.response.use(
-    (response) => {
-        const responseData = response.data?.data !== undefined ? response.data.data : response.data;
-        return { success: true, data: responseData, meta: response.data?.meta || null, status: response.status };
-    },
-    (error) => {
-        if (error.response?.status === 401) {
-            Cookies.remove('authToken');
-            const path = window.location.pathname || '/';
-            // Choose login target by section; default to user login
-            let target = '/sign-in';
-            if (path.startsWith('/admin')) target = '/admin/sign-in';
-            else if (path.startsWith('/organizer')) target = '/organizer/sign-in';
-            // Avoid reload loop if already at target or at home
-            if (path !== target && path !== '/') {
-                window.location.replace(target);
-            }
-        }
-        const errorMessage = error.response?.data?.message || error.message || 'Network Error';
-        const errorData = error.response?.data?.errors || null;
-        return { success: false, error: errorMessage, data: errorData, status: error.response?.status };
+  (response) => ({
+    success: true,
+    data: response.data?.data !== undefined ? response.data.data : response.data,
+    meta: response.data?.meta || null,
+    status: response.status,
+  }),
+  (error) => {
+    if (error.response?.status === 401) {
+      handleUnauthorized()
     }
-);
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message || 'Network Error',
+      data: error.response?.data?.errors || null,
+      status: error.response?.status,
+    }
+  },
+)
 
-// API methods
 export const api = {
-    get: (endpoint) => apiClient.get(endpoint),
-
-    post: (endpoint, data) => apiClient.post(endpoint, data),
-
-    patch: (endpoint, data) => apiClient.patch(endpoint, data),
-
-    put: (endpoint, data) => apiClient.put(endpoint, data),
-
-    delete: (endpoint, data = null) => {
-        if (data) {
-            return apiClient.delete(endpoint, { data });
-        }
-        return apiClient.delete(endpoint);
-    },
-};
-
-export const setAuthToken = (token) => {
-    Cookies.set('authToken', token, {
-        expires: 7,
-        path: '/', 
-    });
+  get: (endpoint, config) => apiClient.get(endpoint, config),
+  post: (endpoint, data, config) => apiClient.post(endpoint, data, config),
+  patch: (endpoint, data, config) => apiClient.patch(endpoint, data, config),
+  put: (endpoint, data, config) => apiClient.put(endpoint, data, config),
+  delete: (endpoint, data) => apiClient.delete(endpoint, data ? { data } : undefined),
 }
 
-export const setAuthRole = (role) => {
-    Cookies.set('authRole', role, {
-        expires: 7,
-        path: '/', 
-    });
-}
-
-export const setAuthUser = (user) => {
-    Cookies.set('authUser', JSON.stringify(user), {
-        expires: 7,
-        path: '/',
-    });
-}
-
-export const getAuthToken = () => Cookies.get('authToken') || null;
-
-export const getAuthRole = () => Cookies.get('authRole') || null;
-
-export const getAuthUser = () => {
-    const user = Cookies.get('authUser');
-    if (!user) return null;
-
-    try {
-        return JSON.parse(user);
-    } catch {
-        return null;
-    }
-}
-
-export const clearAuth = () => {
-    Cookies.remove('authToken', { path: '/' });
-    Cookies.remove('authRole', { path: '/' });
-    Cookies.remove('authUser', { path: '/' });
-}
+export {
+  clearAuth,
+  getAuthRole,
+  getAuthToken,
+  getAuthUser,
+  setAuthRole,
+  setAuthToken,
+  setAuthUser,
+} from './authStorage'

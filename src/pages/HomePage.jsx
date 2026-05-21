@@ -6,6 +6,7 @@ import Footer from '../components/Footer'
 import Header from '../components/Header'
 import HeroCard from '../components/HeroCard'
 import { api } from '../utils/api'
+import { getMonthRange, getWeekRange } from '../utils/dateRange'
 
 const initialHomepageData = {
   categories: [],
@@ -15,32 +16,6 @@ const initialHomepageData = {
   this_week_events: [],
   trending_events: [],
   upcoming_sale_events: [],
-}
-
-function getDateRangeParams(type) {
-  const now = new Date()
-  const start = new Date(now)
-  const end = new Date(now)
-
-  if (type === 'week') {
-    const day = now.getDay()
-    const diffToMonday = day === 0 ? -6 : 1 - day
-    start.setDate(now.getDate() + diffToMonday)
-    start.setHours(0, 0, 0, 0)
-    end.setTime(start.getTime())
-    end.setDate(start.getDate() + 6)
-    end.setHours(23, 59, 59, 999)
-  } else {
-    start.setDate(1)
-    start.setHours(0, 0, 0, 0)
-    end.setMonth(now.getMonth() + 1, 0)
-    end.setHours(23, 59, 59, 999)
-  }
-
-  return {
-    starts_after: start.toISOString(),
-    starts_before: end.toISOString(),
-  }
 }
 
 function HomePage() {
@@ -58,8 +33,8 @@ function HomePage() {
       setIsLoading(true)
       setError('')
 
-      const weekRange = getDateRangeParams('week')
-      const monthRange = getDateRangeParams('month')
+      const weekRange = getWeekRange()
+      const monthRange = getMonthRange()
       const now = new Date().toISOString()
 
       const [
