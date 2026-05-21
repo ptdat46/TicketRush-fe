@@ -1,7 +1,7 @@
 import { FiCalendar, FiCreditCard, FiMapPin, FiTag } from 'react-icons/fi'
 import { formatCurrency, formatEventDateTime, getEventImage } from '../../utils/eventDisplay'
 import { getSeatLabel } from '../../utils/seatMap'
-import SeatZone from './SeatZone'
+import MasterSeatMap from './MasterSeatMap'
 
 function Legend({ color, label }) {
   return (
@@ -12,7 +12,7 @@ function Legend({ color, label }) {
   )
 }
 
-function BookingView({ event, mapError, onCheckout, onSeatToggle, selectedSeats, selectedSeatIds, zones, isBusy }) {
+function BookingView({ event, masterWidth, masterLength, mapError, onCheckout, onSeatToggle, selectedSeats, selectedSeatIds, zones, isBusy }) {
   const total = selectedSeats.reduce((sum, seat) => sum + Number(seat.zone?.price || 0), 0)
   const hasSeatMap = zones.length > 0
 
@@ -42,20 +42,14 @@ function BookingView({ event, mapError, onCheckout, onSeatToggle, selectedSeats,
           )}
 
           <div className="rounded-xl border border-[#3d4a40] bg-[#101711] p-4">
-            <div className="mb-5 flex h-14 items-center justify-center rounded-lg border border-[#59de92]/50 bg-[#59de92]/10 text-xs font-black uppercase tracking-[0.22em] text-[#59de92] shadow-[0_0_18px_rgba(89,222,146,0.12)]">
-              Sân khấu
-            </div>
             {hasSeatMap ? (
-              <div className="grid gap-4 xl:grid-cols-2">
-                {zones.map((zone) => (
-                  <SeatZone
-                    key={zone.id}
-                    onSeatToggle={onSeatToggle}
-                    selectedSeatIds={selectedSeatIds}
-                    zone={zone}
-                  />
-                ))}
-              </div>
+              <MasterSeatMap
+                masterLength={masterLength}
+                masterWidth={masterWidth}
+                onSeatToggle={onSeatToggle}
+                selectedSeatIds={selectedSeatIds}
+                zones={zones}
+              />
             ) : (
               <div className="rounded-lg border border-dashed border-[#3d4a40] bg-[#09100b] p-8 text-center">
                 <p className="text-lg font-black text-white">Chưa có dữ liệu sơ đồ ghế</p>
@@ -65,6 +59,21 @@ function BookingView({ event, mapError, onCheckout, onSeatToggle, selectedSeats,
               </div>
             )}
           </div>
+
+          {hasSeatMap && (
+            <div className="rounded-xl border border-[#3d4a40] bg-[#1a211c] p-4">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#869488]">Khu vực</p>
+              <div className="flex flex-wrap gap-3">
+                {zones.map((zone) => (
+                  <div className="flex items-center gap-2 rounded-full border border-[#3d4a40] bg-[#0e1510] px-3 py-1.5" key={zone.id}>
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: zone.color }} />
+                    <span className="text-sm font-bold text-white">{zone.name}</span>
+                    <span className="text-xs font-bold text-[#59de92]">{formatCurrency(zone.price)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">

@@ -50,3 +50,25 @@ export function getZonesFromResponse(response) {
   if (Array.isArray(response.data?.zones)) return response.data.zones
   return []
 }
+
+export function getEventGridFromResponse(response) {
+  if (!response.success) return null
+  const event = response.data?.event
+  if (!event) return null
+  return {
+    masterWidth: Number(event.master_width || 0),
+    masterLength: Number(event.master_length || 0),
+  }
+}
+
+export function inferGridSize(zones) {
+  let cols = 0
+  let rows = 0
+  for (const zone of zones) {
+    const right = Number(zone.pos_x || 0) + Number(zone.width || 0)
+    const bottom = Number(zone.pos_y || 0) + Number(zone.length || 0)
+    if (right > cols) cols = right
+    if (bottom > rows) rows = bottom
+  }
+  return { masterWidth: cols, masterLength: rows }
+}

@@ -8,7 +8,7 @@ import Header from '../components/Header'
 import { useAuth } from '../contexts/AuthContext'
 import { useWaitingRoom } from '../hooks/useWaitingRoom'
 import { api } from '../utils/api'
-import { getZonesFromResponse, normalizeSeat, normalizeZones } from '../utils/seatMap'
+import { getEventGridFromResponse, getZonesFromResponse, inferGridSize, normalizeSeat, normalizeZones } from '../utils/seatMap'
 
 const SEAT_MAP_ENDPOINTS = (eventId) => [
   `/customer/events/${eventId}/seat-map`,
@@ -24,6 +24,7 @@ function BookingPage() {
 
   const [event, setEvent] = useState(null)
   const [zones, setZones] = useState([])
+  const [grid, setGrid] = useState({ masterWidth: 0, masterLength: 0 })
   const [selectedSeats, setSelectedSeats] = useState([])
   const [paymentMethod, setPaymentMethod] = useState('momo')
   const [customerForm, setCustomerForm] = useState({
@@ -41,12 +42,20 @@ function BookingPage() {
       const response = await api.get(endpoint)
       const responseZones = getZonesFromResponse(response)
       if (responseZones.length > 0) {
-        setZones(normalizeZones(responseZones))
+        const normalized = normalizeZones(responseZones)
+        setZones(normalized)
+        const fromResponse = getEventGridFromResponse(response)
+        const fallback = inferGridSize(normalized)
+        setGrid({
+          masterWidth: fromResponse?.masterWidth || fallback.masterWidth,
+          masterLength: fromResponse?.masterLength || fallback.masterLength,
+        })
         setMapError('')
         return
       }
     }
     setZones([])
+    setGrid({ masterWidth: 0, masterLength: 0 })
     setMapError('Chưa lấy được seat grid từ API. Backend chưa trả danh sách zone và seat cho customer hoặc chưa mở quyền.')
   }, [eventId])
 
@@ -165,6 +174,8 @@ function BookingPage() {
           event={event}
           isBusy={isBusy}
           mapError={mapError}
+          masterLength={grid.masterLength}
+          masterWidth={grid.masterWidth}
           onCheckout={handleProceedToPayment}
           onSeatToggle={handleSeatToggle}
           selectedSeatIds={selectedSeatIds}
